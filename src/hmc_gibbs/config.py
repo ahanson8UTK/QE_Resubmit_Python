@@ -1,4 +1,4 @@
-"""Configuration utilities for the cw2017 sampler scaffold."""
+"""Configuration utilities for the :mod:`hmc_gibbs` sampler scaffold."""
 
 from __future__ import annotations
 

@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "cw2017-hmc-gibbs"
+name = "hmc-gibbs"
 version = "0.1.0"
 description = "Reproducible scaffold for Creal & Wu (2017) HMC-in-Gibbs sampler"
 readme = "README.md"

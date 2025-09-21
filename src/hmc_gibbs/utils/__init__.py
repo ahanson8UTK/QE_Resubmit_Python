@@ -1,4 +1,4 @@
-"""Utility helpers for the :mod:`cw2017` package."""
+"""Utility helpers for the :mod:`hmc_gibbs` package."""
 
 from .packages import PackageInstallationError, ensure_packages_installed
 

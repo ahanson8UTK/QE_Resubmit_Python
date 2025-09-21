@@ -1,4 +1,4 @@
-"""Shared typing aliases for the cw2017 package."""
+"""Shared typing aliases for the :mod:`hmc_gibbs` package."""
 
 from __future__ import annotations
 

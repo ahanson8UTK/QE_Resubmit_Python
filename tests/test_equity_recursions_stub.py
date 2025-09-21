@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import jax.numpy as jnp
 
-from cw2017.utils import jax_setup  # noqa: F401
-from cw2017.equity import price_recursions
+from hmc_gibbs.utils import jax_setup  # noqa: F401
+from hmc_gibbs.equity import price_recursions
 
 
 def test_price_recursions_shape() -> None:

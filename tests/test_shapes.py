@@ -7,14 +7,14 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 
-from cw2017.equity import constraints
-from cw2017.samplers.hmc_block import adapt_block_chees, hmc_block_step
-from cw2017.utils import jax_setup  # noqa: F401
+from hmc_gibbs.equity import constraints
+from hmc_gibbs.samplers.hmc_block import adapt_block_chees, hmc_block_step
+from hmc_gibbs.utils import jax_setup  # noqa: F401
 
 
 def test_smoother_output_shapes() -> None:
     key = jax.random.PRNGKey(0)
-    from cw2017.kalman import smoother  # imported lazily to avoid circular deps
+    from hmc_gibbs.kalman import smoother  # imported lazily to avoid circular deps
 
     g_sample, means = smoother.dk_simulation_smoother(
         {}, jnp.zeros((5, 2)), jnp.zeros((5, 2)), jnp.zeros((5, 2)), key

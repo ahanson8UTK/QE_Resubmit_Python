@@ -12,16 +12,16 @@ SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from cw2017.utils import jax_setup  # noqa: F401
+from hmc_gibbs.utils import jax_setup  # noqa: F401
 
 import jax
 import jax.numpy as jnp
 
-from cw2017 import config as app_config
-from cw2017.data import datasets
-from cw2017.reporting import save_results, summarize
-from cw2017.samplers import gibbs
-from cw2017.utils import rng as rng_utils
+from hmc_gibbs import config as app_config
+from hmc_gibbs.data import datasets
+from hmc_gibbs.reporting import save_results, summarize
+from hmc_gibbs.samplers import gibbs
+from hmc_gibbs.utils import rng as rng_utils
 
 
 def parse_args() -> argparse.Namespace:
