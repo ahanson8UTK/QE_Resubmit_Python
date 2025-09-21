@@ -1,0 +1,21 @@
+# Weakly informative priors for the Creal & Wu (2017) scaffold.
+measurement_error:
+  omega_diag_scale: 0.1
+  omega_diag_df: 5
+
+transition:
+  lambda_f_loc: [-0.2, -0.05, 0.02]
+  lambda_f_scale: [0.1, 0.1, 0.05]
+  q_matrix_scale: 0.2
+
+volatility:
+  mu_h_loc: 0.0
+  mu_h_scale: 1.0
+  gamma0_scale: 0.3
+  gamma1_scale: 0.1
+
+cross_covariances:
+  sigma_h_scale: 0.2
+  sigma_hm_scale: 0.1
+  sigma_hg_scale: 0.1
+  sigma_m_scale: 0.1

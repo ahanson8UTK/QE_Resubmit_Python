@@ -1,0 +1,13 @@
+# Block-wise ChEES warm-up policy.
+chees:
+  sweeps: 2
+  inner_transitions: 4
+  target_acceptance: 0.651
+  max_rewarm_sweeps: 1
+  stability_thresholds:
+    acceptance_lower: 0.6
+    acceptance_upper: 0.7
+    log_step_tolerance: 0.01
+    log_traj_tolerance: 0.02
+    ebfmi_min: 0.3
+    divergence_rate_max: 0.01

@@ -1,0 +1,9 @@
+# Paths to .mat and .csv inputs. Update for real data.
+matrices:
+  m_candidates: data/m_candidates.mat
+
+csv:
+  dividend_growth: data/dividend_growth.csv
+  yields: data/yields.csv
+  sp500_price: data/sp500_price.csv
+  sp500_dividend: data/sp500_dividend.csv

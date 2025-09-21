@@ -1,0 +1,24 @@
+# Default configuration for the Creal & Wu (2017) Gibbs sampler scaffold.
+run:
+  seed: 0
+  chains: 2
+  results_dir: results
+  run_id_prefix: smoke
+
+warmup:
+  config_path: configs/warmup.yaml
+
+data:
+  paths_config: configs/data_paths.yaml
+  priors_config: configs/priors_example.yaml
+  synthetic: true
+
+sampler:
+  sweeps: 1
+  warmup_sweeps: 1
+  production_sweeps: 1
+  particle_gibbs_particles: 8
+
+logging:
+  level: INFO
+  rich_tracebacks: true
