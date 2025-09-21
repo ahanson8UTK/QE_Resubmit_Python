@@ -1,0 +1,55 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cw2017-hmc-gibbs"
+version = "0.1.0"
+description = "Reproducible scaffold for Creal & Wu (2017) HMC-in-Gibbs sampler"
+readme = "README.md"
+authors = [
+  {name = "QE Automation", email = "qe@example.com"},
+]
+license = {text = "MIT"}
+requires-python = ">=3.10"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "jax[jaxlib]",
+  "blackjax",
+  "optax",
+  "numpy",
+  "pandas",
+  "scipy",
+  "pyarrow",
+  "pyyaml",
+  "rich",
+  "tqdm",
+  "typing-extensions",
+]
+
+[project.optional-dependencies]
+dev = [
+  "ruff",
+  "black",
+  "pytest",
+  "hypothesis",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "I", "UP", "B", "N"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+minversion = "7.0"
+pythonpath = ["src"]
