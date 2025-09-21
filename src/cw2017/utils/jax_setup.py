@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import contextlib
 import os
-from typing import Callable, Iterator
+from typing import Callable
 
 os.environ.setdefault("JAX_USE_PJRT_C_API_ON_CPU", "0")
 
@@ -30,13 +29,18 @@ def vjit(fn: Callable[..., Array]) -> Callable[..., Array]:
     return jax.jit(fn, static_argnums=())
 
 
-@contextlib.contextmanager
-def nan_guard(params: Array) -> Iterator[None]:
-    """Context manager that raises if NaNs/Infs appear in JAX computations."""
+def nan_guard(name: str, *arrays: Array) -> None:
+    """Raise with diagnostics if any array contains NaNs or infs."""
 
-    yield
-    if not jnp.all(jnp.isfinite(params)):
-        raise FloatingPointError("Detected non-finite parameters after JAX call")
+    for arr in arrays:
+        tensor = jnp.asarray(arr)
+        if jnp.any(~jnp.isfinite(tensor)):
+            stats = {
+                "min": float(jnp.nanmin(tensor)),
+                "max": float(jnp.nanmax(tensor)),
+                "mean": float(jnp.nanmean(tensor)),
+            }
+            raise RuntimeError(f"{name}: detected non-finite values with stats {stats}")
 
 
 __all__ = ["vmap", "vjit", "nan_guard"]
