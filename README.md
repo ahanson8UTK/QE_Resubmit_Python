@@ -1,5 +1,13 @@
 # cw2017-hmc-gibbs
 
+## How to run smoke
+
+Execute the smoke-test Gibbs sweep with:
+
+```bash
+python -m scripts.run_gibbs --smoke --chains 4 --seed 0
+```
+
 A reproducible, typed JAX scaffold for the Hamiltonian Monte Carlo (HMC) in Gibbs sampler
 outlined in Creal & Wu (2017, *International Economic Review*). The package emphasises
 square-root Kalman filtering, Durbin–Koopman simulation smoothing, and ChEES-tuned dynamic
