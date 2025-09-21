@@ -1,4 +1,4 @@
-# cw2017-hmc-gibbs
+# hmc-gibbs
 
 ## How to run smoke
 
@@ -39,5 +39,20 @@ the [BlackJAX documentation](https://blackjax-devs.github.io/blackjax/generated/
 - Modular block definitions with clear extension points for equity pricing constraints and
   pseudo-marginal bubble components.
 - Instrumentation hooks for effective sample size per second, work units, and warm-up status.
+
+### Repository layout
+
+The project follows a ``src`` layout so editable installs and tooling target the
+package directly without referring to the legacy ``src/cw2017`` path. The major
+directories are:
+
+```
+.
+├── configs/        # YAML configuration files for experiments
+├── scripts/        # Command-line utilities and helpers
+├── src/
+│   └── hmc_gibbs/  # Package modules
+└── tests/          # Smoke-test suites exercising key components
+```
 
 Refer to the extensive TODO lists in each math-heavy module for the next implementation steps.

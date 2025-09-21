@@ -6,7 +6,7 @@ import sys
 
 import pytest
 
-from cw2017.utils.packages import (
+from hmc_gibbs.utils.packages import (
     PackageInstallationError,
     ensure_packages_installed,
 )

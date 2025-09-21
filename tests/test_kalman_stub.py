@@ -5,8 +5,8 @@ from __future__ import annotations
 import jax
 import jax.numpy as jnp
 
-from cw2017.kalman import sr_kf
-from cw2017.utils import jax_setup  # noqa: F401
+from hmc_gibbs.kalman import sr_kf
+from hmc_gibbs.utils import jax_setup  # noqa: F401
 
 
 def _identity_builders(state_dim: int, obs_dim: int):

@@ -1,4 +1,4 @@
-"""cw2017
+"""hmc_gibbs
 =================
 
 A modular, typed JAX implementation scaffold for the Creal & Wu (2017) HMC-in-Gibbs sampler.
