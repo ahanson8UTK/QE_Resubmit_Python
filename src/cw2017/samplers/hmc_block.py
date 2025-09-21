@@ -10,13 +10,15 @@ import jax.numpy as jnp
 import optax
 
 from ..typing import Array, PRNGKey
+from ..utils import ensure_packages_installed
 
 
 def _import_blackjax():
     try:  # pragma: no cover - import failure should be explicit
         import blackjax  # type: ignore
-    except ImportError as exc:  # pragma: no cover - dependency should be present
-        raise RuntimeError("blackjax must be installed to use HMC kernels") from exc
+    except ImportError:
+        ensure_packages_installed({"blackjax": "blackjax"})
+        import blackjax  # type: ignore
     return blackjax
 
 
