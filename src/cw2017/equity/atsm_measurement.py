@@ -7,7 +7,10 @@ from typing import Dict, Iterable, Tuple
 import jax
 import jax.numpy as jnp
 import jax.scipy.linalg as jsp
+import numpy as np
 from jax import lax
+
+from tsm.q_covariance import compute_sigma_g_Q
 
 Array = jnp.ndarray
 
@@ -160,7 +163,21 @@ def build_measurement_terms(
 
     QgQ = _as_array(fixed["Q_g^Q"])
     Lambda_gQ = fixed["Lambda_g^Q"]
-    Sigma_gQ = _as_array(fixed["Sigma_g^Q"])
+    mu_h_bar = _as_array(fixed["mu_h_bar"])
+    Sigma_g = params3a.Sigma_g
+    Gamma0 = params3a.Gamma0
+    Gamma1 = params3a.Gamma1
+    d_g = Sigma_g.shape[0]
+    d_m = Gamma0.shape[0] - d_g
+    Sigma_g_Q_np = compute_sigma_g_Q(
+        Sigma_g,
+        Gamma0,
+        Gamma1,
+        np.asarray(mu_h_bar),
+        d_m,
+        d_g,
+    )
+    Sigma_gQ = jnp.asarray(Sigma_g_Q_np, dtype=jnp.float64)
     measurement_dict = {"Lambda": Lambda_gQ, "Sigma": Sigma_gQ, "QgQ": QgQ}
     B = compute_B(QgQ, measurement_dict, maturities)
     A0, A1 = compute_A0_A1(B, measurement_dict, QgQ, maturities)
