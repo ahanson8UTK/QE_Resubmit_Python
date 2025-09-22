@@ -11,3 +11,10 @@ chees:
     log_traj_tolerance: 0.02
     ebfmi_min: 0.3
     divergence_rate_max: 0.01
+
+warmup_3a:
+  num_warmup_steps: 1000
+  target_accept: 0.651
+  adam_lr: 0.02
+  jitter_amount: 1.0
+  decay_rate: 0.5
