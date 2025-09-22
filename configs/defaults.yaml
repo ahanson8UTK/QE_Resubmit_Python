@@ -22,3 +22,14 @@ sampler:
 logging:
   level: INFO
   rich_tracebacks: true
+
+model:
+  rho_max: 0.995
+  vTau_star: 60
+  maturities: [3, 6, 12, 36, 60, 84, 120]
+  priors_3a:
+    sigma_log_omega: 1.0
+    sigma_L: 0.3
+    sigma_lambda: 0.5
+    sigma_q_sq: 6000.0
+    sigma_gamma1: 250.0
