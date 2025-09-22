@@ -21,13 +21,17 @@ def block3a_setup():
     h_t = jax.random.normal(h_key, (T, d_h), dtype=jnp.float64) * 0.1
     y_t = jax.random.normal(y_key, (T, d_y), dtype=jnp.float64) * 0.1
 
+    Sigma_g = jnp.eye(3, dtype=jnp.float64)
     fixed = {
         "m_t": m_t,
         "h_t": h_t,
         "mu_g": jnp.zeros(3, dtype=jnp.float64),
         "Q_g^Q": jnp.eye(3, dtype=jnp.float64),
         "Lambda_g^Q": jnp.diag(jnp.array([0.9, 0.8, 0.7], dtype=jnp.float64)),
-        "Sigma_g^Q": 0.01 * jnp.eye(3, dtype=jnp.float64),
+        "Sigma_g": Sigma_g,
+        "Gamma0": jnp.zeros(d_m + 3, dtype=jnp.float64),
+        "Gamma1": jnp.zeros((d_m + 3, d_h), dtype=jnp.float64),
+        "mu_h_bar": jnp.zeros(d_h, dtype=jnp.float64),
         "mu_g^{Q,u}": jnp.zeros(2, dtype=jnp.float64),
     }
     data = {"y_t": y_t}

@@ -6,18 +6,34 @@ import numpy as np
 import jax.numpy as jnp
 
 from equity_constraint import compute_M0Q_from_B_and_Sigma_gQ, equity_coeffs
+from tsm.q_covariance import compute_sigma_g_Q
 
 
 def test_compute_m0q_matches_scalar_bruteforce():
     rng = np.random.default_rng(0)
     n_star = 5
+    d_m = 2
     d_g = 3
+    d_h = 4
     B_rows = rng.standard_normal((n_star - 1, d_g))
-    Sigma_gQ = rng.standard_normal((d_g, d_g))
+    Sigma_g = rng.standard_normal((d_g, d_g))
+    Sigma_g = np.tril(Sigma_g)
+    np.fill_diagonal(Sigma_g, np.abs(np.diag(Sigma_g)) + 0.5)
+    Gamma0 = rng.standard_normal(d_m + d_g)
+    Gamma1 = rng.standard_normal((d_m + d_g, d_h))
+    mu_h_bar = rng.standard_normal(d_h)
 
-    result = compute_M0Q_from_B_and_Sigma_gQ(B_rows, Sigma_gQ, n_star=n_star)
+    result = compute_M0Q_from_B_and_Sigma_gQ(
+        B_rows,
+        Sigma_g=Sigma_g,
+        Gamma0=Gamma0,
+        Gamma1=Gamma1,
+        mu_h_bar=mu_h_bar,
+        n_star=n_star,
+    )
 
-    GG = Sigma_gQ @ Sigma_gQ.T
+    Sigma_g_Q = compute_sigma_g_Q(Sigma_g, Gamma0, Gamma1, mu_h_bar, d_m, d_g)
+    GG = Sigma_g_Q @ Sigma_g_Q.T
     inner = 0.0
     for i in range(1, n_star):
         b = B_rows[i - 1]
@@ -39,7 +55,9 @@ def test_equity_coeffs_returns_finite_a_and_b_and_inequality():
     Phi_mh = 0.1 * rng.standard_normal((d_m, d_h))
     Phi_gQ = 0.05 * rng.standard_normal((d_g, d_g))
 
-    Sigma_gQ = rng.standard_normal((d_g, d_g))
+    Sigma_g = rng.standard_normal((d_g, d_g))
+    Sigma_g = np.tril(Sigma_g)
+    np.fill_diagonal(Sigma_g, np.abs(np.diag(Sigma_g)) + 0.5)
     Ah = rng.standard_normal((d_h, d_h))
     Sigma_h = Ah @ Ah.T + np.eye(d_h)
     Sigma_hm = rng.standard_normal((d_h, d_m))
@@ -53,7 +71,16 @@ def test_equity_coeffs_returns_finite_a_and_b_and_inequality():
 
     n_star = 60
     B_rows = rng.standard_normal((n_star - 1, d_g))
-    M0Q = compute_M0Q_from_B_and_Sigma_gQ(B_rows, Sigma_gQ, n_star=n_star)
+    Gamma0 = rng.standard_normal(d_m + d_g)
+    Gamma1 = rng.standard_normal((d_m + d_g, d_h))
+    M0Q = compute_M0Q_from_B_and_Sigma_gQ(
+        B_rows,
+        Sigma_g=Sigma_g,
+        Gamma0=Gamma0,
+        Gamma1=Gamma1,
+        mu_h_bar=mu_h_bar,
+        n_star=n_star,
+    )
     M1Q = rng.standard_normal((d_g, 2))
 
     Sg_free = jnp.array([[0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], dtype=jnp.float64)
@@ -63,11 +90,13 @@ def test_equity_coeffs_returns_finite_a_and_b_and_inequality():
         "Phi_mg": jnp.asarray(Phi_mg, dtype=jnp.float64),
         "Phi_mh": jnp.asarray(Phi_mh, dtype=jnp.float64),
         "Phi_gQ": jnp.asarray(Phi_gQ, dtype=jnp.float64),
-        "Sigma_gQ": jnp.asarray(Sigma_gQ, dtype=jnp.float64),
+        "Sigma_g": jnp.asarray(Sigma_g, dtype=jnp.float64),
         "Sigma_h": jnp.asarray(Sigma_h, dtype=jnp.float64),
         "Sigma_hm": jnp.asarray(Sigma_hm, dtype=jnp.float64),
         "Sigma_hg": jnp.asarray(Sigma_hg, dtype=jnp.float64),
         "mu_h_bar": jnp.asarray(mu_h_bar, dtype=jnp.float64),
+        "Gamma0": jnp.asarray(Gamma0, dtype=jnp.float64),
+        "Gamma1": jnp.asarray(Gamma1, dtype=jnp.float64),
         "bar": {
             "mm": jnp.asarray(bar_mm, dtype=jnp.float64),
             "mg": jnp.asarray(bar_mg, dtype=jnp.float64),

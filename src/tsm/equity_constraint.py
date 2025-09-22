@@ -5,6 +5,8 @@ from __future__ import annotations
 import numpy as np
 from scipy import linalg
 
+from .q_covariance import compute_sigma_g_Q
+
 
 def equity_margin(
     theta_m: np.ndarray,
@@ -19,7 +21,9 @@ def equity_margin(
     Phi_h: np.ndarray,
     M0_Q: np.ndarray,
     M1_Q: np.ndarray,
-    Sigma_g_Q: np.ndarray,
+    Sigma_g: np.ndarray,
+    Gamma0: np.ndarray,
+    Gamma1: np.ndarray,
     Sigma_hm: np.ndarray,
     Sigma_hg: np.ndarray,
     Sigma_h: np.ndarray,
@@ -28,6 +32,8 @@ def equity_margin(
 ) -> float:
     """
     Returns LHS = theta_m mu_m_bar + theta_g mu_g_u_bar + theta_g_Q mu_g_Q_u_bar + V(...)
+    where ``Sigma_g^Q`` is constructed internally from ``(Sigma_g, Gamma0, Gamma1, mu_h_bar)`` and
+    
     where
     V = [e_d'(I-Phi_m)^{-1}Phi_mh_bar + e_d' Phi_mh Phi_h_bar] mu_h_bar
         + [e_d'(I-Phi_m)^{-1}Phi_mg - e_1'] M0_Q
@@ -49,19 +55,23 @@ def equity_margin(
     Phi_mh = np.asarray(Phi_mh, dtype=np.float64)
     Phi_h = np.asarray(Phi_h, dtype=np.float64)
     M0_Q = np.asarray(M0_Q, dtype=np.float64)
-    Sigma_g_Q = np.asarray(Sigma_g_Q, dtype=np.float64)
+    Sigma_g = np.asarray(Sigma_g, dtype=np.float64)
+    Gamma0 = np.asarray(Gamma0, dtype=np.float64)
+    Gamma1 = np.asarray(Gamma1, dtype=np.float64)
     Sigma_hm = np.asarray(Sigma_hm, dtype=np.float64)
     Sigma_hg = np.asarray(Sigma_hg, dtype=np.float64)
     Sigma_h = np.asarray(Sigma_h, dtype=np.float64)
-    mu_h_bar = np.asarray(mu_h_bar, dtype=np.float64)
     Phi_g_Q = np.asarray(Phi_g_Q, dtype=np.float64)
+    mu_h_bar = np.asarray(mu_h_bar, dtype=np.float64)
 
     d_m = Phi_m.shape[0]
-    d_g = Sigma_g_Q.shape[0]
+    d_g = Sigma_g.shape[0]
     e_d = np.zeros(d_m, dtype=np.float64)
     e_d[-1] = 1.0
     e1 = np.zeros(d_g, dtype=np.float64)
     e1[0] = 1.0
+
+    Sigma_g_Q = compute_sigma_g_Q(Sigma_g, Gamma0, Gamma1, mu_h_bar, d_m, d_g)
 
     I_m = np.eye(d_m, dtype=np.float64)
     solve_m = linalg.solve(I_m - Phi_m, I_m, assume_a="gen", check_finite=False)

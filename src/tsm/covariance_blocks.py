@@ -68,7 +68,9 @@ class EquityConstraintParams:
     Phi_h: np.ndarray
     M0_Q: np.ndarray
     M1_Q: np.ndarray
-    Sigma_g_Q: np.ndarray
+    Sigma_g: np.ndarray
+    Gamma0: np.ndarray
+    Gamma1: np.ndarray
     Phi_g_Q: np.ndarray
 
 
@@ -288,7 +290,9 @@ def draw_sigma_h_block_with_constraint(
             equity_params.Phi_h,
             equity_params.M0_Q,
             equity_params.M1_Q,
-            equity_params.Sigma_g_Q,
+            equity_params.Sigma_g,
+            equity_params.Gamma0,
+            equity_params.Gamma1,
             Sigma_hm,
             Sigma_hg,
             Sigma_h,

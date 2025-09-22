@@ -98,9 +98,10 @@ def _make_setup(seed: int = 0):
     mu_g_u_bar = np.zeros(D_G)
     mu_g_Q_u_bar = np.zeros(D_G)
     mu_h_bar = np.zeros(D_H)
+    Gamma0 = 0.01 * rng.standard_normal(D_M + D_G)
+    Gamma1 = 0.01 * rng.standard_normal((D_M + D_G, D_H))
     M0_Q = np.zeros(D_G)
     M1_Q = np.eye(D_G)
-    Sigma_g_Q = np.eye(D_G) * 0.5
 
     equity_params = EquityConstraintParams(
         theta_m=theta_m,
@@ -116,7 +117,9 @@ def _make_setup(seed: int = 0):
         Phi_h=Phi_h,
         M0_Q=M0_Q,
         M1_Q=M1_Q,
-        Sigma_g_Q=Sigma_g_Q,
+        Sigma_g=Sigma_g,
+        Gamma0=Gamma0,
+        Gamma1=Gamma1,
         Phi_g_Q=Phi_g_Q,
     )
 
@@ -133,7 +136,9 @@ def _make_setup(seed: int = 0):
         equity_params.Phi_h,
         equity_params.M0_Q,
         equity_params.M1_Q,
-        equity_params.Sigma_g_Q,
+        equity_params.Sigma_g,
+        equity_params.Gamma0,
+        equity_params.Gamma1,
         Sigma_hm_true,
         Sigma_hg_true,
         Sigma_h_true,
@@ -204,7 +209,9 @@ def test_covariance_draws_shapes_and_constraints():
         setup["equity_params"].Phi_h,
         setup["equity_params"].M0_Q,
         setup["equity_params"].M1_Q,
-        setup["equity_params"].Sigma_g_Q,
+        setup["equity_params"].Sigma_g,
+        setup["equity_params"].Gamma0,
+        setup["equity_params"].Gamma1,
         Sigma_hm,
         Sigma_hg,
         Sigma_h,
@@ -245,7 +252,9 @@ def test_constraint_rejection_increments(monkeypatch):
         Phi_h,
         M0_Q,
         M1_Q,
-        Sigma_g_Q,
+        Sigma_g,
+        Gamma0,
+        Gamma1,
         Sigma_hm,
         Sigma_hg,
         Sigma_h,
@@ -268,7 +277,9 @@ def test_constraint_rejection_increments(monkeypatch):
             Phi_h,
             M0_Q,
             M1_Q,
-            Sigma_g_Q,
+            Sigma_g,
+            Gamma0,
+            Gamma1,
             Sigma_hm,
             Sigma_hg,
             Sigma_h,
@@ -304,7 +315,9 @@ def test_constraint_rejection_increments(monkeypatch):
         setup["equity_params"].Phi_h,
         setup["equity_params"].M0_Q,
         setup["equity_params"].M1_Q,
-        setup["equity_params"].Sigma_g_Q,
+        setup["equity_params"].Sigma_g,
+        setup["equity_params"].Gamma0,
+        setup["equity_params"].Gamma1,
         Sigma_hm,
         Sigma_hg,
         Sigma_h,
