@@ -14,18 +14,34 @@ import jax.numpy as jnp
 
 from equity_constraint import equity_coeffs
 from kalman import dk_sample, kf_forward
+from kalman.ffbs import kf_forward_sr_wrapper
 from models.ss_builders_3c import build_steps_augmented, build_steps_reduced
 from samplers.trunc_gauss import sample_halfspace_trunc_normal
-from utils.linalg import chol_solve_spd, safe_cholesky
+from utils.linalg import chol_solve_spd, safe_cholesky, tri_solve
 
 
 def _loglike_from_cache(cache: Dict[str, jnp.ndarray]) -> jnp.ndarray:
     """Compute the Gaussian log-likelihood from Kalman innovations."""
 
     innov = jnp.asarray(cache["innov"], dtype=jnp.float64)
+    if "S_chol" in cache:
+        S_chol = jnp.asarray(cache["S_chol"], dtype=jnp.float64)
+
+        def _per_period(v: jnp.ndarray, L: jnp.ndarray) -> jnp.ndarray:
+            if v.size == 0:
+                return jnp.array(0.0, dtype=jnp.float64)
+            alpha = tri_solve(L, v, lower=True)
+            logdet = 2.0 * jnp.sum(jnp.log(jnp.diag(L)))
+            dim = v.shape[0]
+            return -0.5 * (logdet + alpha @ alpha + dim * jnp.log(2.0 * jnp.pi))
+
+        return jnp.sum(jax.vmap(_per_period)(innov, S_chol))
+
     innov_cov = jnp.asarray(cache["innov_cov"], dtype=jnp.float64)
 
     def _per_period(v: jnp.ndarray, s: jnp.ndarray) -> jnp.ndarray:
+        if v.size == 0:
+            return jnp.array(0.0, dtype=jnp.float64)
         L = safe_cholesky(s)
         solve = chol_solve_spd(L, v)
         logdet = 2.0 * jnp.sum(jnp.log(jnp.diag(L)))
@@ -42,8 +58,18 @@ def run_block3c_dk_draw(
     data: Dict,
     cfg: Dict,
     priors: Dict,
+    *,
+    use_square_root: bool = True,
 ) -> Tuple[Dict, Dict]:
-    """Draw ``g_{1:T}`` and the static means using the Form I sampler of Appendix B.1.1."""
+    """Draw ``g_{1:T}`` and the static means using the Form I sampler of Appendix B.1.1.
+
+    Parameters
+    ----------
+    use_square_root:
+        If ``True`` (default) run the numerically robust square-root Kalman filter with
+        exact-row handling. Set to ``False`` to fall back to the covariance-form
+        recursion.
+    """
 
     y_obs = jnp.asarray(data["y"], dtype=jnp.float64)
 
@@ -52,7 +78,12 @@ def run_block3c_dk_draw(
     steps_aug, x0_mean_aug, x0_cov_aug, idx = build_steps_augmented(
         fixed, data, cfg, priors, state
     )
-    cache_aug = kf_forward(y_obs, steps_aug, x0_mean_aug, x0_cov_aug)
+    if use_square_root:
+        cache_aug = kf_forward_sr_wrapper(
+            y_obs, steps_aug, x0_mean_aug, x0_cov_aug, exact_tol=0.0
+        )
+    else:
+        cache_aug = kf_forward(y_obs, steps_aug, x0_mean_aug, x0_cov_aug)
 
     filt_mean_T = cache_aug["filt_mean"][-1]
     filt_cov_T = cache_aug["filt_cov"][-1]
@@ -75,7 +106,12 @@ def run_block3c_dk_draw(
         cfg,
         mus={"mu_m": mu_m, "mu_gu": mu_gu, "mu_gQ_u": mu_gq},
     )
-    cache_red = kf_forward(y_obs, steps_red, x0_mean_red, x0_cov_red)
+    if use_square_root:
+        cache_red = kf_forward_sr_wrapper(
+            y_obs, steps_red, x0_mean_red, x0_cov_red, exact_tol=0.0
+        )
+    else:
+        cache_red = kf_forward(y_obs, steps_red, x0_mean_red, x0_cov_red)
     g_draw = dk_sample(key_g, y_obs, steps_red, x0_mean_red, x0_cov_red, cache_red)
 
     loglik = _loglike_from_cache(cache_red)

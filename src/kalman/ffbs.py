@@ -10,6 +10,7 @@ import jax
 import jax.numpy as jnp
 
 from utils.linalg import chol_solve_spd, safe_cholesky
+from .srkf import kf_forward_sr
 
 ArrayLike = Any
 
@@ -112,6 +113,23 @@ def kf_forward(
         "innov": jnp.stack(innovs),
         "innov_cov": jnp.stack(innov_covs),
     }
+
+
+def kf_forward_sr_wrapper(
+    y: ArrayLike,
+    steps: Callable[[int], Step] | Sequence[Step],
+    x0_mean: ArrayLike,
+    x0_cov: ArrayLike,
+    *,
+    exact_tol: float = 0.0,
+) -> dict[str, jax.Array]:
+    """Convenience wrapper for the square-root Kalman filter."""
+
+    y_arr = jnp.asarray(y, dtype=jnp.float64)
+    m0 = jnp.asarray(x0_mean, dtype=jnp.float64)
+    P0 = jnp.asarray(x0_cov, dtype=jnp.float64)
+    L0 = safe_cholesky(P0)
+    return kf_forward_sr(y_arr, steps, m0, L0, exact_tol=exact_tol)
 
 
 def dk_sample(
