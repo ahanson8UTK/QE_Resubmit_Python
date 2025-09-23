@@ -25,14 +25,14 @@ SIGMA_H_HALF_NORMAL_SCALE = 1.0
 RHO_TARGET_RADIUS = 0.5
 
 LogScalarPrior = Callable[[float], float]
-LogRhoPrior = Callable[[NDArray[np.float_], NDArray[np.float_]], float]
+LogRhoPrior = Callable[[NDArray[np.float64], NDArray[np.float64]], float]
 
 
 def _zero_scalar(_: float) -> float:
     return 0.0
 
 
-def _zero_rho(_: NDArray[np.float_], __: NDArray[np.float_]) -> float:
+def _zero_rho(_: NDArray[np.float64], __: NDArray[np.float64]) -> float:
     return 0.0
 
 
@@ -46,8 +46,8 @@ def gaussian_logpdf(value: float, *, mean: float = 0.0, scale: float = 1.0) -> f
 
 
 def isotropic_gaussian_logpdf(
-    rho_bm: NDArray[np.float_],
-    rho_bg: NDArray[np.float_],
+    rho_bm: NDArray[np.float64],
+    rho_bg: NDArray[np.float64],
     *,
     scale: float = 1.0,
 ) -> float:
