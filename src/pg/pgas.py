@@ -5,6 +5,8 @@ from typing import Dict, Optional, Tuple
 
 import numpy as np
 
+from common.vol_mapping import diag_vols_series
+
 
 # --------------------------
 # Utilities
@@ -75,8 +77,20 @@ class VolParams:
     h0_mean: np.ndarray
     h0_cov: np.ndarray
 
+    e_div_ix: Optional[int] = None
+    dividend_uses_lagged_h: bool = True
+
     Sh: Optional[np.ndarray] = None
     Sh_chol: Optional[np.ndarray] = None
+
+    def __post_init__(self) -> None:
+        if self.e_div_ix is None:
+            self.e_div_ix = self.d_m - 1
+        if not isinstance(self.dividend_uses_lagged_h, bool):  # pragma: no cover
+            raise TypeError("dividend_uses_lagged_h must be a boolean")
+        self.e_div_ix = int(self.e_div_ix)
+        if not (0 <= self.e_div_ix < self.d_m):  # pragma: no cover - sanity guard
+            raise ValueError("e_div_ix must index the macro block")
 
     def precompute(self) -> None:
         """Pre-compute covariance for the volatility innovations."""
@@ -93,34 +107,53 @@ class VolParams:
 # Log observation density at time t for (m_{t+1}, g_{t+1})
 # --------------------------
 def log_obs_density_t(
-    t: int, h_t: np.ndarray, m: np.ndarray, g: np.ndarray, params: VolParams
+    t: int,
+    h_t: np.ndarray,
+    m: np.ndarray,
+    g: np.ndarray,
+    params: VolParams,
+    *,
+    h_prev: Optional[np.ndarray] = None,
 ) -> float:
     """Log density ``log p(m_{t+1}, g_{t+1} | m_t, g_t, h_t; θ)``."""
     dm, dg = params.d_m, params.d_g
 
-    log_diag = params.Gamma0 + params.Gamma1 @ h_t
-    sds = np.exp(0.5 * log_diag)
-    Dm = np.diag(sds[:dm])
-    Dg = np.diag(sds[dm:])
+    h_curr = np.asarray(h_t, dtype=np.float64)
+    h_pre_vec: Optional[np.ndarray] = None
+    if params.dividend_uses_lagged_h:
+        base_prev = h_prev if h_prev is not None else params.mu_h
+        h_pre_vec = np.asarray(base_prev, dtype=np.float64)
+    Dm_series, Dg_series = diag_vols_series(
+        Gamma0=params.Gamma0,
+        Gamma1=params.Gamma1,
+        H=h_curr[None, :],
+        d_m=dm,
+        d_g=dg,
+        e_div_ix=int(params.e_div_ix),
+        use_lag_for_div=params.dividend_uses_lagged_h,
+        h_pre=h_pre_vec,
+    )
+    diag_m = Dm_series[0]
+    diag_g = Dg_series[0]
 
     m_t = m[t]
     g_t = g[t]
     m_tp1 = m[t + 1]
     g_tp1 = g[t + 1]
 
-    mean_m = params.mu_m + params.Phi_m @ m_t + params.Phi_mg @ g_t + params.Phi_mh @ h_t
-    mean_g = params.mu_g + params.Phi_gm @ m_t + params.Phi_g @ g_t + params.Phi_gh @ h_t
+    mean_m = params.mu_m + params.Phi_m @ m_t + params.Phi_mg @ g_t + params.Phi_mh @ h_curr
+    mean_g = params.mu_g + params.Phi_gm @ m_t + params.Phi_g @ g_t + params.Phi_gh @ h_curr
 
     r_m = m_tp1 - mean_m
     r_g = g_tp1 - mean_g
     r = np.concatenate([r_m, r_g])
 
-    Sig_mm = params.Sigma_m @ Dm
+    Sig_mm = params.Sigma_m * diag_m[None, :]
     var_m = Sig_mm @ Sig_mm.T
 
     cov_mg = Sig_mm @ params.Sigma_gm.T
 
-    Sig_gg = params.Sigma_g @ Dg
+    Sig_gg = params.Sigma_g * diag_g[None, :]
     var_g = params.Sigma_gm @ params.Sigma_gm.T + Sig_gg @ Sig_gg.T
 
     top = np.concatenate([var_m, cov_mg], axis=1)
@@ -223,7 +256,15 @@ def draw_h_pgas(
 
         LW_t = np.empty(J, dtype=np.float64)
         for j in range(J):
-            LW_t[j] = log_obs_density_t(t, H[t, j, :], m, g, params)
+            if params.dividend_uses_lagged_h:
+                if t == 0:
+                    h_prev = params.mu_h
+                else:
+                    parent = A[t, j]
+                    h_prev = params.mu_h if parent < 0 else H[t - 1, parent, :]
+            else:
+                h_prev = None
+            LW_t[j] = log_obs_density_t(t, H[t, j, :], m, g, params, h_prev=h_prev)
         lw = LW_t - logsumexp(LW_t)
         W_t = np.exp(lw)
         W_t /= np.sum(W_t)

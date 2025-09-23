@@ -43,6 +43,8 @@ def run_block3d_pg_as(
         Sigma_hg=theta["Sigma_hg"],
         h0_mean=theta["h0_mean"],
         h0_cov=theta["h0_cov"],
+        e_div_ix=int(theta.get("e_div_ix", theta["d_m"] - 1)),
+        dividend_uses_lagged_h=bool(theta.get("dividend_uses_lagged_h", True)),
     )
 
     h_draw, diag = draw_h_pgas(

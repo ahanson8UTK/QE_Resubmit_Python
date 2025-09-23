@@ -54,6 +54,7 @@ def main() -> None:
         gamma_dd2=data["gamma_dd2"],
         e_div_ix=int(data.get("e_div_ix", d_m - 1)),
         e1_g_ix=int(data.get("e1_g_ix", 0)),
+        dividend_uses_lagged_h=bool(data.get("dividend_uses_lagged_h", True)),
     )
 
     series = price_equity_series(
