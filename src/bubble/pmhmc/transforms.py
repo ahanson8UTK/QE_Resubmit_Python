@@ -8,20 +8,20 @@ from numpy.typing import NDArray
 
 from .types import BubbleParams, BubbleParamsUnconstrained
 
-ArrayLike = float | NDArray[np.float_]
+ArrayLike = float | NDArray[np.float64]
 
 PHI_B_LOWER = -0.999
 PHI_B_UPPER = 0.999
 
 
-def _softplus_raw(x: ArrayLike) -> NDArray[np.float_]:
+def _softplus_raw(x: ArrayLike) -> NDArray[np.float64]:
     """Raw softplus without minimum clipping."""
 
     x_arr = np.asarray(x, dtype=float)
     return np.log1p(np.exp(-np.abs(x_arr))) + np.maximum(x_arr, 0.0)
 
 
-def softplus(x: ArrayLike, min: float = 1e-6) -> NDArray[np.float_]:
+def softplus(x: ArrayLike, min: float = 1e-6) -> NDArray[np.float64]:
     """Numerically stable softplus transform with a lower bound."""
 
     x_arr = np.asarray(x, dtype=float)
@@ -31,7 +31,7 @@ def softplus(x: ArrayLike, min: float = 1e-6) -> NDArray[np.float_]:
     return out
 
 
-def inv_softplus(y: ArrayLike, min: float = 1e-6) -> NDArray[np.float_]:
+def inv_softplus(y: ArrayLike, min: float = 1e-6) -> NDArray[np.float64]:
     """Inverse of :func:`softplus` on the positive real line."""
 
     y_arr = np.asarray(y, dtype=float)
@@ -42,7 +42,7 @@ def inv_softplus(y: ArrayLike, min: float = 1e-6) -> NDArray[np.float_]:
 
 def tanh_to_interval(
     z: ArrayLike, a: float = PHI_B_LOWER, b: float = PHI_B_UPPER
-) -> NDArray[np.float_]:
+) -> NDArray[np.float64]:
     """Map real values to the open interval ``(a, b)`` using ``tanh``."""
 
     if not a < b:
@@ -55,7 +55,7 @@ def tanh_to_interval(
     return out
 
 
-def _log_sigmoid(x: NDArray[np.float_]) -> NDArray[np.float_]:
+def _log_sigmoid(x: NDArray[np.float64]) -> NDArray[np.float64]:
     """Stable computation of ``log(sigmoid(x))``."""
 
     x_arr = np.asarray(x, dtype=float)
@@ -64,8 +64,8 @@ def _log_sigmoid(x: NDArray[np.float_]) -> NDArray[np.float_]:
 
 
 def renorm_rho(
-    z_rho_bm: NDArray[np.float_], z_rho_bg: NDArray[np.float_]
-) -> Tuple[NDArray[np.float_], NDArray[np.float_], float]:
+    z_rho_bm: NDArray[np.float64], z_rho_bg: NDArray[np.float64]
+) -> Tuple[NDArray[np.float64], NDArray[np.float64], float]:
     """Shrink unconstrained vectors to the open unit ball.
 
     The mapping ``v -> v / sqrt(1 + ||v||^2)`` ensures that the resulting
@@ -122,11 +122,18 @@ def unconstrained_to_constrained(
     return params, log_jacobian
 
 
+def constrain_params(u: BubbleParamsUnconstrained) -> Tuple[BubbleParams, float]:
+    """Compatibility wrapper mirroring the legacy API name."""
+
+    return unconstrained_to_constrained(u)
+
+
 __all__ = [
     "softplus",
     "inv_softplus",
     "tanh_to_interval",
     "renorm_rho",
     "unconstrained_to_constrained",
+    "constrain_params",
 ]
 

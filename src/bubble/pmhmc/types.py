@@ -52,16 +52,16 @@ class BubbleData:
     """
 
     T: int
-    y_net_fund: NDArray[np.float_]
-    r_t: NDArray[np.float_]
-    m_t: NDArray[np.float_]
-    g_t: NDArray[np.float_]
-    h_t: NDArray[np.float_]
-    Dm_t: NDArray[np.float_]
-    Dg_t: NDArray[np.float_]
-    Sigma_m: NDArray[np.float_]
-    Sigma_g: NDArray[np.float_]
-    Sigma_gm: NDArray[np.float_]
+    y_net_fund: NDArray[np.float64]
+    r_t: NDArray[np.float64]
+    m_t: NDArray[np.float64]
+    g_t: NDArray[np.float64]
+    h_t: NDArray[np.float64]
+    Dm_t: NDArray[np.float64]
+    Dg_t: NDArray[np.float64]
+    Sigma_m: NDArray[np.float64]
+    Sigma_g: NDArray[np.float64]
+    Sigma_gm: NDArray[np.float64]
 
 
 @dataclass
@@ -87,8 +87,8 @@ class BubbleParams:
     mu_b: float
     phi_b: float
     sigma_h: float
-    rho_bm: NDArray[np.float_]
-    rho_bg: NDArray[np.float_]
+    rho_bm: NDArray[np.float64]
+    rho_bg: NDArray[np.float64]
 
 
 @dataclass
@@ -99,8 +99,8 @@ class BubbleParamsUnconstrained:
     z_mu_b: float
     z_phi_b: float
     z_sigma_h: float
-    z_rho_bm: NDArray[np.float_]
-    z_rho_bg: NDArray[np.float_]
+    z_rho_bm: NDArray[np.float64]
+    z_rho_bg: NDArray[np.float64]
 
 
 @dataclass
@@ -110,7 +110,7 @@ class PMHMCResult:
     params: BubbleParams
     log_like_hat: float
     accept_rate: float
-    draws_constrained: Dict[str, NDArray[np.float_]]
+    draws_constrained: Dict[str, NDArray[np.float64]]
     diagnostics: Dict[str, Any]
 
 
