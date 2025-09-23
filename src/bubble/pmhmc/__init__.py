@@ -1,6 +1,7 @@
 """Scaffolding for the bubble particle MCMC (PM-HMC) package."""
 from __future__ import annotations
 
+from .block import draw_bubble_block
 from .prior import BubblePrior, gaussian_logpdf, isotropic_gaussian_logpdf
 from .transforms import (
     inv_softplus,
@@ -22,6 +23,7 @@ __all__ = [
     "BubbleParams",
     "BubbleParamsUnconstrained",
     "BubblePrior",
+    "draw_bubble_block",
     "PMHMCConfig",
     "PMHMCResult",
     "gaussian_logpdf",
