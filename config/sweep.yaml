@@ -1,0 +1,26 @@
+mcmc:
+  burn_in: 500
+  iters: 2000
+  thin: 1
+  checkpoint_every: 25
+  flush_every: 25
+  seed: 12345
+  platform: "cpu"   # "cpu" | "gpu" (JAX platform)
+  run_prefix: "mcmc"
+
+particle_filter:
+  n_particles: 300
+  pg_as: true
+  ancestor_resampling: true
+
+data:
+  # paths used by loaders
+  m_pool_mat: "data/m_pool.mat"
+  m_pool_var: "m_pool"       # variable name in the .mat file
+  dividends_csv: "data/sp500_div_growth.csv"
+  yields_csv: "data/yields_3_6_12_36_60_84_120.csv"
+  price_csv: "data/sp500_price.csv"
+  raw_div_csv: "data/sp500_raw_div.csv"
+
+paths:
+  artifacts_root: "./artifacts"
