@@ -1,0 +1,229 @@
+Architecture Overview
+=====================
+
+The repository provides a typed JAX scaffold for implementing the Creal & Wu (2017) Hamiltonian Monte Carlo–within–Gibbs sampler, emphasising float64 numerics, square-root Kalman filtering, and modular block updates that can later incorporate equity and bubble components.
+
+Execution Flow
+--------------
+- **CLI entry point.** `scripts/run_gibbs.py` wires together configuration loading, RNG initialisation, data acquisition, and either a synthetic smoke run or a placeholder multi-block Gibbs sweep. The smoke path fabricates synthetic `y`, `m`, and `h` series, adapts the block-3a HMC kernel, writes summaries, and prints tuned step sizes, while the non-smoke path loads configured data and calls the Gibbs driver.
+- **Configuration.** `hmc_gibbs.config` defines dataclasses for run, warm-up, data, sampler, and logging options, plus YAML loaders. Default YAML files set seeds, chain counts, sweep budgets, data sources, and ChEES warm-up targets.
+
+Data Layer
+----------
+- **Dataset factories.** `hmc_gibbs.data.datasets` bundles macro, yield, and equity series, with helpers for synthetic generation and real-data loading driven by config paths.
+- **I/O utilities.** `hmc_gibbs.data.io` normalises CSV/Matlab inputs (randomly sampling candidate `m` matrices, scaling yields/dividends, aligning macro data).
+
+Sampling Core
+-------------
+- **Gibbs scaffold.** `hmc_gibbs.samplers.gibbs` maintains a `SmokeState` for block-3a parameters, orchestrates warm-up via ChEES, samples with the tuned kernel, and records diagnostics. The placeholder `run_gibbs` iterates through the intended block sequence producing stub metrics until other blocks are implemented.
+- **Per-block HMC.** `hmc_gibbs.samplers.hmc_block` lazily imports BlackJAX, runs ChEES adaptation (configurable acceptance/jitter/decay), computes harmonic-mean acceptance and EBFMI diagnostics, and defines a `dynamic_hmc` step that vmap’s across chains.
+
+Model and Inference Primitives
+-------------------------------
+- **Conditional log densities.** `hmc_gibbs.models.conditionals` builds the block-3a posterior by tiling the parameter vector into time-varying state transition/measurement builders, adding a Gaussian prior, and evaluating the SR-Kalman log-likelihood; it also provides stubs for other Gibbs blocks (Kalman-based, equity-constrained, particle Gibbs).
+- **Square-root Kalman filter.** `hmc_gibbs.kalman.sr_kf` implements numerically stable predict/update steps using QR-based covariance propagation, returning log-likelihood contributions and filtered states while guarding against non-finite values.
+- **Supporting modules.** Placeholders for Durbin–Koopman smoothing, particle Gibbs latents, equity constraints, and price recursions define future extension points while maintaining consistent interfaces.
+
+Instrumentation and Utilities
+-----------------------------
+- **Reporting.** Results are persisted via timestamped run IDs, metadata YAML, metrics CSVs, and a textual acceptance summary in `hmc_gibbs.reporting` helpers.
+- **Runtime utilities.** `hmc_gibbs.utils` centralises JAX configuration (CPU, float64, precision), RNG synchronisation between NumPy and JAX, logging with Rich handlers, and package auto-install safeguards for optional dependencies.
+
+Extended Pipeline and Artifacts
+-------------------------------
+- **Legacy sweep driver.** `src/driver/sweep.py` provides a higher-level Monte Carlo sweep that samples macro matrices, delegates to bond/equity/bubble steps via dynamic imports, checkpoints state, and exports diagnostics using ArviZ. It demonstrates how the sampler integrates with artifact management for larger runs.
+- **Artifact registry.** `artifacts.registry` locates or initialises artifact roots, issues git-stamped run IDs, writes manifests, tracks “latest” runs, and exposes typed paths used by downstream modules.
+
+Domain-Specific Modules
+-----------------------
+- **Equity pricing.** `equity.price_equity` constructs net-fundamental series by running the affine term structure recursion (`tsm.equity_pricer`) on state draws, validates observable alignment, records manifests (with git metadata and config hashes), and writes outputs through the registry; `equity.pricing_io` loads/saves Parquet artefacts with index validation.
+- **Bubble module.** `bubble.data_io` retrieves the latest equity net-fundamental series, and `bubble.pmhmc.sampler` implements a pseudo-marginal HMC workflow in JAX, including auxiliary draw packing, parameter reparameterisations, and dual-averaging warm-up hooks for BlackJAX.
+
+Together these layers define clear functional associations: configs govern data I/O and sampler budgets; data loaders feed state/observable tensors; the Gibbs scaffold adapts and executes HMC sub-kernels using Kalman-based targets; diagnostics and artifacts document runs; and the broader pipeline ties Gibbs outputs into equity/bubble post-processing with persistent registries.
+Repository Tree
+---------------
+.
+├── .gitignore
+├── README.md
+├── architecture_overview.txt
+├── config
+│   ├── paths.yaml
+│   └── sweep.yaml
+├── configs
+│   ├── data_paths.yaml
+│   ├── defaults.yaml
+│   ├── priors_example.yaml
+│   └── warmup.yaml
+├── pyproject.toml
+├── requirements.txt
+├── results
+│   └── .gitkeep
+├── scripts
+│   ├── compute_equity_series.py
+│   ├── make_synthetic_config.py
+│   ├── one_click_mcmc.bat
+│   ├── one_click_mcmc.sh
+│   ├── price_equity.py
+│   ├── run_bubble_step.py
+│   ├── run_gibbs.py
+│   ├── run_mcmc.py
+│   └── test_bubble_pmhmc.py
+├── src
+│   ├── artifacts
+│   │   ├── __init__.py
+│   │   └── registry.py
+│   ├── bubble
+│   │   ├── data_io.py
+│   │   └── pmhmc
+│   │       ├── __init__.py
+│   │       ├── block.py
+│   │       ├── chi_integrals.py
+│   │       ├── likelihood.py
+│   │       ├── path.py
+│   │       ├── prior.py
+│   │       ├── sampler.py
+│   │       ├── transforms.py
+│   │       └── types.py
+│   ├── common
+│   │   ├── __init__.py
+│   │   ├── jax_vol_mapping.py
+│   │   └── vol_mapping.py
+│   ├── cw2017
+│   │   ├── __init__.py
+│   │   ├── equity
+│   │   │   ├── __init__.py
+│   │   │   └── atsm_measurement.py
+│   │   ├── kalman
+│   │   │   ├── __init__.py
+│   │   │   └── sr_kf.py
+│   │   ├── math
+│   │   │   ├── __init__.py
+│   │   │   ├── fill_q.py
+│   │   │   └── ordered_bounded.py
+│   │   ├── models
+│   │   │   ├── __init__.py
+│   │   │   ├── conditionals.py
+│   │   │   ├── parameters.py
+│   │   │   └── priors_3a.py
+│   │   └── samplers
+│   │       ├── __init__.py
+│   │       ├── gibbs.py
+│   │       └── hmc_block.py
+│   ├── data
+│   │   ├── __init__.py
+│   │   └── random_m_loader.py
+│   ├── driver
+│   │   ├── __init__.py
+│   │   ├── sweep.py
+│   │   └── typing.py
+│   ├── engine
+│   │   ├── __init__.py
+│   │   └── run_bond_sweep.py
+│   ├── equity
+│   │   ├── __init__.py
+│   │   ├── price_equity.py
+│   │   └── pricing_io.py
+│   ├── equity_constraint.py
+│   ├── hmc_gibbs
+│   │   ├── __init__.py
+│   │   ├── bubble
+│   │   │   ├── __init__.py
+│   │   │   ├── model.py
+│   │   │   └── pseudo_marginal.py
+│   │   ├── config.py
+│   │   ├── data
+│   │   │   ├── __init__.py
+│   │   │   ├── datasets.py
+│   │   │   ├── io.py
+│   │   │   └── preprocessing.py
+│   │   ├── equity
+│   │   │   ├── __init__.py
+│   │   │   ├── constraints.py
+│   │   │   └── price_recursions.py
+│   │   ├── kalman
+│   │   │   ├── __init__.py
+│   │   │   ├── smoother.py
+│   │   │   └── sr_kf.py
+│   │   ├── math
+│   │   │   ├── __init__.py
+│   │   │   ├── cholesky.py
+│   │   │   ├── constraints.py
+│   │   │   ├── linops.py
+│   │   │   └── transforms.py
+│   │   ├── models
+│   │   │   ├── __init__.py
+│   │   │   ├── conditionals.py
+│   │   │   ├── parameters.py
+│   │   │   ├── priors.py
+│   │   │   └── state_space.py
+│   │   ├── particle
+│   │   │   ├── __init__.py
+│   │   │   └── pgibbs.py
+│   │   ├── reporting
+│   │   │   ├── __init__.py
+│   │   │   ├── save_results.py
+│   │   │   └── summarize.py
+│   │   ├── samplers
+│   │   │   ├── __init__.py
+│   │   │   ├── diagnostics.py
+│   │   │   ├── gibbs.py
+│   │   │   ├── hmc_block.py
+│   │   │   └── warmup.py
+│   │   ├── typing.py
+│   │   └── utils
+│   │       ├── __init__.py
+│   │       ├── functional.py
+│   │       ├── jax_setup.py
+│   │       ├── logging.py
+│   │       ├── numerics.py
+│   │       ├── packages.py
+│   │       ├── rng.py
+│   │       └── timers.py
+│   ├── kalman
+│   │   ├── __init__.py
+│   │   ├── ffbs.py
+│   │   └── srkf.py
+│   ├── models
+│   │   ├── __init__.py
+│   │   └── ss_builders_3c.py
+│   ├── pg
+│   │   ├── __init__.py
+│   │   └── pgas.py
+│   ├── samplers
+│   │   ├── __init__.py
+│   │   ├── block3c.py
+│   │   ├── block3d.py
+│   │   └── trunc_gauss.py
+│   ├── sampling
+│   │   ├── __init__.py
+│   │   ├── diagnostics.py
+│   │   ├── hmc_block.py
+│   │   └── transforms.py
+│   ├── tsm
+│   │   ├── covariance_blocks.py
+│   │   ├── equity_constraint.py
+│   │   ├── equity_pricer.py
+│   │   ├── math_utils.py
+│   │   └── q_covariance.py
+│   └── utils
+│       ├── __init__.py
+│       ├── checkpoint.py
+│       ├── diagnostics.py
+│       ├── linalg.py
+│       └── selectors.py
+└── tests
+    ├── test_artifacts_equity.py
+    ├── test_block3a_smoke.py
+    ├── test_covariance_blocks.py
+    ├── test_equity_constraint.py
+    ├── test_equity_recursions_stub.py
+    ├── test_kalman_ffbs.py
+    ├── test_kalman_srkf.py
+    ├── test_kalman_stub.py
+    ├── test_pgas_block.py
+    ├── test_shapes.py
+    ├── test_trunc_gauss.py
+    ├── test_utils.py
+    ├── test_utils_packages.py
+    └── test_vol_mapping.py
+
