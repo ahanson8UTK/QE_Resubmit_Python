@@ -5,6 +5,8 @@ from typing import Dict, Optional
 
 import numpy as np
 
+from common.vol_mapping import diag_vols_series
+
 Array = np.ndarray
 
 
@@ -63,6 +65,7 @@ class EquityPricingInputs:
     # Indices
     e_div_ix: Optional[int] = None
     e1_g_ix: int = 0
+    dividend_uses_lagged_h: bool = True
 
     def __post_init__(self) -> None:
         if self.e_div_ix is None:
@@ -99,6 +102,7 @@ class EquityPricingInputs:
 
         assert 0 <= self.e_div_ix < dm
         assert 0 <= self.e1_g_ix < dg
+        assert isinstance(self.dividend_uses_lagged_h, bool)
 
 
 def _row(length: int, ix: int) -> Array:
@@ -158,11 +162,17 @@ def price_equity_ratio(
     ed_Phi_mh_Phi_h = ed_Phi_mh @ Phi_h
 
     # Build diag(D_{m,t}), diag(D_{g,t}) from the Gamma mapping
-    z_all = inp.Gamma0[None, :] + h_t @ inp.Gamma1.T
-    diag_all = np.exp(0.5 * z_all)
-    Dm_vec = diag_all[:, :dm]
-    Dg_vec = diag_all[:, dm:]
-    Dm_sq = Dm_vec ** 2
+    Dm_diag, Dg_diag = diag_vols_series(
+        Gamma0=inp.Gamma0,
+        Gamma1=inp.Gamma1,
+        H=h_t,
+        d_m=dm,
+        d_g=dg,
+        e_div_ix=inp.e_div_ix,
+        use_lag_for_div=inp.dividend_uses_lagged_h,
+        h_pre=inp.mu_h,
+    )
+    Dm_sq = Dm_diag ** 2
 
     # Dividend variance shortcut σ_{Δd,t}^2(h_t) = 0.5 * (γ_dd0 + γ_dd2' h_t)
     sigma_dd = 0.5 * (inp.gamma_dd0 + h_t @ inp.gamma_dd2)
@@ -175,7 +185,7 @@ def price_equity_ratio(
         + h_t @ Phi_gh.T
     )
     u = np.linalg.solve(Sigma_g, b_t.T).T
-    lambda_g_t = u / Dg_vec
+    lambda_g_t = u / Dg_diag
 
     # Recursion initial conditions
     log_sum = np.zeros(T)  # log(1)
@@ -206,7 +216,7 @@ def price_equity_ratio(
         part2 = h_t @ ed_Phi_mh_Phi_h
         part3 = -(lambda_g_t @ lambda_coef)
         coef5 = (ed_plus_B @ Sigma_m) * rhs_vec
-        part5 = Dm_vec @ coef5
+        part5 = Dm_diag @ coef5
         coef6 = (ed_plus_B @ Sigma_m) ** 2
         part6 = 0.5 * (Dm_sq @ coef6)
 

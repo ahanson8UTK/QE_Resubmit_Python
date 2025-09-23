@@ -13,6 +13,7 @@ volatility:
   mu_h_scale: 1.0
   gamma0_scale: 0.3
   gamma1_scale: 0.1
+  dividend_uses_lagged_h: true
 
 cross_covariances:
   sigma_h_scale: 0.2
