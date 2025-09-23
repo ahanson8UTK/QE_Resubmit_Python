@@ -85,9 +85,14 @@ class ArtifactRegistry:
         self.root.mkdir(parents=True, exist_ok=True)
 
     @classmethod
-    def from_default(cls) -> "ArtifactRegistry":
-        """Build a registry using ``config/paths.yaml`` or the default location."""
+    def from_default(cls, root: Optional[str | os.PathLike[str]] = None) -> "ArtifactRegistry":
+        """Build a registry using ``config/paths.yaml`` or the provided location."""
 
+        if root is not None:
+            root_path = Path(root)
+            if not root_path.is_absolute():
+                root_path = PROJECT_ROOT / root_path
+            return cls(root_path)
         return cls(_resolve_artifacts_root())
 
     # --- directory helpers -------------------------------------------------
