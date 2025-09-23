@@ -1,7 +1,13 @@
 """Scaffolding for the bubble particle MCMC (PM-HMC) package."""
 from __future__ import annotations
 
-from .block import draw_bubble_block
+from .likelihood import (
+    integrate_over_chi,
+    log_weight_one_s,
+    loglik_hat,
+    proposal_moments,
+)
+
 from .prior import BubblePrior, gaussian_logpdf, isotropic_gaussian_logpdf
 from .transforms import (
     inv_softplus,
@@ -26,6 +32,15 @@ __all__ = [
     "draw_bubble_block",
     "PMHMCConfig",
     "PMHMCResult",
+
+    "integrate_over_chi",
+    "log_weight_one_s",
+    "loglik_hat",
+    "proposal_moments",
+    "artanh_unconstrain",
+    "constrain_params",
+    "from_unit_ball",
+
     "gaussian_logpdf",
     "inv_softplus",
     "isotropic_gaussian_logpdf",
