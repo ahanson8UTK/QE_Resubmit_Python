@@ -3,14 +3,11 @@ from __future__ import annotations
 
 from .prior import BubblePrior, gaussian_logpdf, isotropic_gaussian_logpdf
 from .transforms import (
-    artanh_unconstrain,
-    constrain_params,
-    from_unit_ball,
     inv_softplus,
+    renorm_rho,
     softplus,
-    tanh_constrain,
-    to_unit_ball,
-    unconstrain_params,
+    tanh_to_interval,
+    unconstrained_to_constrained,
 )
 from .types import (
     BubbleData,
@@ -27,14 +24,11 @@ __all__ = [
     "BubblePrior",
     "PMHMCConfig",
     "PMHMCResult",
-    "artanh_unconstrain",
-    "constrain_params",
-    "from_unit_ball",
     "gaussian_logpdf",
     "inv_softplus",
     "isotropic_gaussian_logpdf",
+    "renorm_rho",
     "softplus",
-    "tanh_constrain",
-    "to_unit_ball",
-    "unconstrain_params",
+    "tanh_to_interval",
+    "unconstrained_to_constrained",
 ]
