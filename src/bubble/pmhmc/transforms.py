@@ -1,7 +1,7 @@
 """Parameter space transforms for the bubble PM-HMC module."""
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -10,132 +10,123 @@ from .types import BubbleParams, BubbleParamsUnconstrained
 
 ArrayLike = float | NDArray[np.float_]
 
-
-def _as_native_type(value: NDArray[np.float_], original: ArrayLike) -> ArrayLike:
-    """Return ``value`` as a Python float when ``original`` was scalar."""
-    if np.isscalar(original):
-        return float(value)
-    if isinstance(original, np.ndarray) and value.shape == ():
-        return float(value)
-    return value
+PHI_B_LOWER = -0.999
+PHI_B_UPPER = 0.999
 
 
-def softplus(x: ArrayLike) -> ArrayLike:
-    """Numerically stable softplus transform.
-
-    Parameters
-    ----------
-    x:
-        Input scalar or array.
-
-    Returns
-    -------
-    ArrayLike
-        Softplus of the input with the same shape as ``x``.
-    """
+def _softplus_raw(x: ArrayLike) -> NDArray[np.float_]:
+    """Raw softplus without minimum clipping."""
 
     x_arr = np.asarray(x, dtype=float)
-    out = np.log1p(np.exp(-np.abs(x_arr))) + np.maximum(x_arr, 0.0)
-    return _as_native_type(out, x)
+    return np.log1p(np.exp(-np.abs(x_arr))) + np.maximum(x_arr, 0.0)
 
 
-def inv_softplus(y: ArrayLike) -> ArrayLike:
+def softplus(x: ArrayLike, min: float = 1e-6) -> NDArray[np.float_]:
+    """Numerically stable softplus transform with a lower bound."""
+
+    x_arr = np.asarray(x, dtype=float)
+    out = _softplus_raw(x_arr)
+    if min > 0.0:
+        out = np.maximum(out, min)
+    return out
+
+
+def inv_softplus(y: ArrayLike, min: float = 1e-6) -> NDArray[np.float_]:
     """Inverse of :func:`softplus` on the positive real line."""
 
     y_arr = np.asarray(y, dtype=float)
-    out = np.log(np.expm1(y_arr))
-    return _as_native_type(out, y)
+    y_adj = np.maximum(y_arr, min)
+    out = y_adj + np.log1p(-np.exp(-y_adj))
+    return out
 
 
-def tanh_constrain(x: ArrayLike) -> ArrayLike:
-    """Map real values to ``(-1, 1)`` via the hyperbolic tangent."""
+def tanh_to_interval(
+    z: ArrayLike, a: float = PHI_B_LOWER, b: float = PHI_B_UPPER
+) -> NDArray[np.float_]:
+    """Map real values to the open interval ``(a, b)`` using ``tanh``."""
+
+    if not a < b:
+        raise ValueError("Lower bound must be strictly less than upper bound.")
+    z_arr = np.asarray(z, dtype=float)
+    tanh_z = np.tanh(z_arr)
+    half_range = 0.5 * (b - a)
+    center = 0.5 * (a + b)
+    out = center + half_range * tanh_z
+    return out
+
+
+def _log_sigmoid(x: NDArray[np.float_]) -> NDArray[np.float_]:
+    """Stable computation of ``log(sigmoid(x))``."""
 
     x_arr = np.asarray(x, dtype=float)
-    out = np.tanh(x_arr)
-    return _as_native_type(out, x)
+    raw = -_softplus_raw(-x_arr)
+    return raw
 
 
-def artanh_unconstrain(y: ArrayLike) -> ArrayLike:
-    """Inverse of :func:`tanh_constrain` with domain ``(-1, 1)``."""
+def renorm_rho(
+    z_rho_bm: NDArray[np.float_], z_rho_bg: NDArray[np.float_]
+) -> Tuple[NDArray[np.float_], NDArray[np.float_], float]:
+    """Shrink unconstrained vectors to the open unit ball.
 
-    y_arr = np.asarray(y, dtype=float)
-    if np.any(np.abs(y_arr) >= 1.0):
-        raise ValueError("Input to artanh_unconstrain must have absolute value < 1.")
-    out = np.arctanh(y_arr)
-    return _as_native_type(out, y)
-
-
-def to_unit_ball(z: Iterable[float]) -> NDArray[np.float_]:
-    """Project unconstrained values to the open unit ball.
-
-    The mapping ``v -> v / (1 + ||v||)`` ensures that the resulting vector
-    has Euclidean norm strictly less than one.  This is convenient for
-    correlation-style parameters that must satisfy
-    ``||rho_bm||^2 + ||rho_bg||^2 < 1``.
+    The mapping ``v -> v / sqrt(1 + ||v||^2)`` ensures that the resulting
+    vector has Euclidean norm strictly less than one.  For robustness we
+    treat the unconstrained ``z`` variables as primary and therefore ignore
+    the Jacobian adjustment of this shrinkage, effectively viewing it as part
+    of the parameterization.  The returned log-Jacobian contribution is zero
+    with this convention.
     """
 
-    z_arr = np.asarray(list(z), dtype=float)
-    norm = np.linalg.norm(z_arr)
-    scale = 1.0 / (1.0 + norm)
-    return z_arr * scale
+    v = np.concatenate((np.asarray(z_rho_bm, dtype=float), np.asarray(z_rho_bg, dtype=float)))
+    norm_sq = np.dot(v, v)
+    scale = 1.0 / np.sqrt(1.0 + norm_sq)
+    u = v * scale
+    d_m = z_rho_bm.shape[0]
+    rho_bm = u[:d_m].copy()
+    rho_bg = u[d_m:].copy()
+    log_jac = 0.0
+    return rho_bm, rho_bg, log_jac
 
 
-def from_unit_ball(v: Iterable[float]) -> NDArray[np.float_]:
-    """Inverse transformation for :func:`to_unit_ball`."""
+def unconstrained_to_constrained(
+    u: BubbleParamsUnconstrained,
+) -> Tuple[BubbleParams, float]:
+    """Map unconstrained parameters to their constrained counterparts."""
 
-    v_arr = np.asarray(list(v), dtype=float)
-    norm = np.linalg.norm(v_arr)
-    if norm >= 1.0:
-        raise ValueError("Input to from_unit_ball must lie strictly inside the unit ball.")
-    scale = 1.0 / (1.0 - norm)
-    return v_arr * scale
+    B0 = softplus(u.z_B0)
+    sigma_h = softplus(u.z_sigma_h)
+    phi_b = tanh_to_interval(u.z_phi_b, PHI_B_LOWER, PHI_B_UPPER)
+    rho_bm, rho_bg, log_jac_rho = renorm_rho(u.z_rho_bm, u.z_rho_bg)
 
-
-def constrain_params(params: BubbleParamsUnconstrained) -> BubbleParams:
-    """Map unconstrained parameters onto the interpretable constrained space."""
-
-    rho_concat = np.concatenate((params.z_rho_bm, params.z_rho_bg))
-    rho = to_unit_ball(rho_concat)
-    d_m = params.z_rho_bm.shape[0]
-    rho_bm = rho[:d_m]
-    rho_bg = rho[d_m:]
-
-    return BubbleParams(
-        B0=float(softplus(params.z_B0)),
-        mu_b=float(params.z_mu_b),
-        phi_b=float(tanh_constrain(params.z_phi_b)),
-        sigma_h=float(softplus(params.z_sigma_h)),
+    params = BubbleParams(
+        B0=float(B0),
+        mu_b=float(u.z_mu_b),
+        phi_b=float(phi_b),
+        sigma_h=float(sigma_h),
         rho_bm=rho_bm,
         rho_bg=rho_bg,
     )
 
+    z_B0 = np.asarray(u.z_B0, dtype=float)
+    z_sigma_h = np.asarray(u.z_sigma_h, dtype=float)
+    z_phi_b = np.asarray(u.z_phi_b, dtype=float)
 
-def unconstrain_params(params: BubbleParams) -> BubbleParamsUnconstrained:
-    """Map constrained parameters back to an unconstrained representation."""
+    log_jacobian = float(np.sum(_log_sigmoid(z_B0)))
+    log_jacobian += float(np.sum(_log_sigmoid(z_sigma_h)))
 
-    rho_concat = np.concatenate((params.rho_bm, params.rho_bg))
-    rho_z = from_unit_ball(rho_concat)
-    d_m = params.rho_bm.shape[0]
-    rho_bm_z = rho_z[:d_m]
-    rho_bg_z = rho_z[d_m:]
+    tanh_phi = np.tanh(z_phi_b)
+    half_range = 0.5 * (PHI_B_UPPER - PHI_B_LOWER)
+    tanh_sq = np.clip(tanh_phi**2, 0.0, 1.0 - 1e-12)
+    log_jacobian += float(np.sum(np.log(half_range) + np.log1p(-tanh_sq)))
+    log_jacobian += log_jac_rho
 
-    return BubbleParamsUnconstrained(
-        z_B0=float(inv_softplus(params.B0)),
-        z_mu_b=float(params.mu_b),
-        z_phi_b=float(artanh_unconstrain(params.phi_b)),
-        z_sigma_h=float(inv_softplus(params.sigma_h)),
-        z_rho_bm=rho_bm_z,
-        z_rho_bg=rho_bg_z,
-    )
+    return params, log_jacobian
 
 
 __all__ = [
     "softplus",
     "inv_softplus",
-    "tanh_constrain",
-    "artanh_unconstrain",
-    "to_unit_ball",
-    "from_unit_ball",
-    "constrain_params",
-    "unconstrain_params",
+    "tanh_to_interval",
+    "renorm_rho",
+    "unconstrained_to_constrained",
 ]
+
