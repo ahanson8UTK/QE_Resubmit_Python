@@ -31,7 +31,7 @@ def _param_dimension(info: Dict[str, int], maturities: Iterable[int]) -> int:
     Ng = int(info["Ng"])
     Nh = int(info["Nh"])
     qs_len = count_qs_entries(info)
-    return dy + 3 + (Nm + Ng) + Nh + qs_len + 3 + 1 + 1 + 2
+    return dy + 3 + (Nm + Ng) + Nh + qs_len + 3 + 1 + 1 + 2 + Nh
 
 
 def run_block3a_hmc_step(

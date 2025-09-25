@@ -68,7 +68,7 @@ def build_block3a_design(
     mu_m_bar = _asarray(fixed["mu_m_bar"])
     mu_gu_bar = _asarray(fixed["mu_g^u_bar"])
     mu_gq_bar = _asarray(fixed["mu_g^{Q,u}"])
-    mu_h_bar = _asarray(fixed["mu_h_bar"])
+    mu_h_bar = _asarray(params3a.mu_h_bar)
 
     Phi_m = _asarray(fixed["Phi_m"])
     Phi_mg = _asarray(fixed["Phi_mg"])

@@ -92,7 +92,7 @@ def block3a_setup():
     from cw2017.math.fill_q import count_qs_entries
 
     qs_len = count_qs_entries(info)
-    dim = dy + 3 + (info["Nm"] + info["Ng"]) + info["Nh"] + qs_len + 3 + 1 + 1 + 2
+    dim = dy + 3 + (info["Nm"] + info["Ng"]) + info["Nh"] + qs_len + 3 + 1 + 1 + 2 + info["Nh"]
     init_vec = jax.random.normal(u_key, (dim,), dtype=jnp.float64) * 0.01
 
     return rng, fixed, data, cfg, warmup_cfg, info, maturities, init_vec

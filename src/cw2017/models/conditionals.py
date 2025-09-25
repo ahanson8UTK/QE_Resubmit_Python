@@ -59,6 +59,9 @@ def unpack_params3a_unconstrained(
     gamma1_free_2elts = vec[idx : idx + 2]
     idx += 2
 
+    mu_h_bar_raw = vec[idx : idx + Nh]
+    idx += Nh
+
     if idx != vec.size:
         raise ValueError("Unexpected vector length for Params3aUnconstrained")
 
@@ -72,6 +75,7 @@ def unpack_params3a_unconstrained(
         phiQ_sign_raw=phiQ_sign_raw,
         gamma0_last_raw=gamma0_last_raw,
         gamma1_free_2elts=gamma1_free_2elts,
+        mu_h_bar_raw=mu_h_bar_raw,
     )
 
 
@@ -90,6 +94,7 @@ def pack_params3a_unconstrained(
         jnp.atleast_1d(_asarray(u.phiQ_sign_raw)),
         jnp.atleast_1d(_asarray(u.gamma0_last_raw)),
         _asarray(u.gamma1_free_2elts).reshape(-1),
+        _asarray(u.mu_h_bar_raw).reshape(-1),
     ]
     return jnp.concatenate(parts, axis=0)
 
