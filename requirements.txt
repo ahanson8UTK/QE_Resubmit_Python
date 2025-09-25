@@ -10,3 +10,4 @@ tqdm>=4.66
 jax>=0.4
 blackjax>=1.1
 numba>=0.59
+h5py>=3.11

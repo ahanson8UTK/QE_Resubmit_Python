@@ -30,6 +30,7 @@ dependencies = [
   "rich",
   "tqdm",
   "typing-extensions",
+  "h5py",
 ]
 
 [project.optional-dependencies]
