@@ -21,18 +21,59 @@ def block3a_setup():
     h_t = jax.random.normal(h_key, (T, d_h), dtype=jnp.float64) * 0.1
     y_t = jax.random.normal(y_key, (T, d_y), dtype=jnp.float64) * 0.1
 
-    Sigma_g = jnp.eye(3, dtype=jnp.float64)
+    d_g = 3
+    mu_gu_dim = 2
+    Sigma_g = jnp.eye(d_g, dtype=jnp.float64)
+    M1 = jnp.array([[1.0, 0.0], [1.0, 0.0], [0.0, 1.0]], dtype=jnp.float64)
+    Phi_m = 0.95 * jnp.eye(d_m, dtype=jnp.float64)
+    Phi_mg = jnp.zeros((d_m, d_g), dtype=jnp.float64)
+    Phi_mh = jnp.zeros((d_m, d_h), dtype=jnp.float64)
+    Phi_h = 0.9 * jnp.eye(d_h, dtype=jnp.float64)
+    bar_mm = 0.05 * jnp.eye(d_m, dtype=jnp.float64)
+    bar_mg = 0.02 * jnp.ones((d_m, mu_gu_dim), dtype=jnp.float64)
+    bar_mh = 0.01 * jnp.ones((d_m, d_h), dtype=jnp.float64)
+    bar_gm = 0.03 * jnp.ones((d_g, d_m), dtype=jnp.float64)
+    bar_gg = 0.02 * jnp.ones((d_g, mu_gu_dim), dtype=jnp.float64)
+    bar_gh = 0.01 * jnp.ones((d_g, d_h), dtype=jnp.float64)
+    bar_hh = 0.05 * jnp.eye(d_h, dtype=jnp.float64)
+    Sigma_m = jnp.eye(d_m, dtype=jnp.float64)
+    Sigma_gm = jnp.zeros((d_g, d_m), dtype=jnp.float64)
+    Sigma_hm = jnp.zeros((d_h, d_m), dtype=jnp.float64)
+    Sigma_hg = jnp.zeros((d_h, d_g), dtype=jnp.float64)
+    Sigma_h = jnp.eye(d_h, dtype=jnp.float64)
     fixed = {
         "m_t": m_t,
         "h_t": h_t,
-        "mu_g": jnp.zeros(3, dtype=jnp.float64),
-        "Q_g^Q": jnp.eye(3, dtype=jnp.float64),
+        "mu_g": jnp.zeros(d_g, dtype=jnp.float64),
+        "Q_g^Q": jnp.eye(d_g, dtype=jnp.float64),
         "Lambda_g^Q": jnp.diag(jnp.array([0.9, 0.8, 0.7], dtype=jnp.float64)),
         "Sigma_g": Sigma_g,
-        "Gamma0": jnp.zeros(d_m + 3, dtype=jnp.float64),
-        "Gamma1": jnp.zeros((d_m + 3, d_h), dtype=jnp.float64),
+        "Gamma0": jnp.zeros(d_m + d_g, dtype=jnp.float64),
+        "Gamma1": jnp.zeros((d_m + d_g, d_h), dtype=jnp.float64),
         "mu_h_bar": jnp.zeros(d_h, dtype=jnp.float64),
-        "mu_g^{Q,u}": jnp.zeros(2, dtype=jnp.float64),
+        "mu_g^{Q,u}": jnp.zeros(mu_gu_dim, dtype=jnp.float64),
+        "mu_m_bar": jnp.zeros(d_m, dtype=jnp.float64),
+        "mu_g^u_bar": jnp.zeros(mu_gu_dim, dtype=jnp.float64),
+        "M1": M1,
+        "Phi_m": Phi_m,
+        "Phi_mg": Phi_mg,
+        "Phi_mh": Phi_mh,
+        "Phi_h": Phi_h,
+        "Sigma_m": Sigma_m,
+        "Sigma_gm": Sigma_gm,
+        "Sigma_hm": Sigma_hm,
+        "Sigma_hg": Sigma_hg,
+        "Sigma_h": Sigma_h,
+        "g0_mean": jnp.zeros(d_g, dtype=jnp.float64),
+        "bar": {
+            "mm": bar_mm,
+            "mg": bar_mg,
+            "mh": bar_mh,
+            "gm": bar_gm,
+            "gg": bar_gg,
+            "gh": bar_gh,
+            "hh": bar_hh,
+        },
     }
     data = {"y_t": y_t}
     cfg = {"rho_max": 0.995, "priors_3a": {}}
