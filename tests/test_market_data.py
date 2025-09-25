@@ -32,10 +32,14 @@ def test_load_market_data(tmp_path):
 
     data = load_market_data(bond_csv, sp500_csv)
 
-    np.testing.assert_allclose(data.bond_yields, np.array([[1.0, 2.0], [3.0, 4.0]]))
+    np.testing.assert_allclose(
+        data.bond_yields, np.array([[1.0, 2.0], [3.0, 4.0]]) / 1200.0
+    )
     np.testing.assert_allclose(data.sp500_price, np.array([112.4, 110.3]))
     np.testing.assert_allclose(data.sp500_div, np.array([3.17, 3.19]))
-    np.testing.assert_allclose(data.log_div_grow, np.array([0.003, 0.004]))
+    np.testing.assert_allclose(
+        data.log_div_grow, np.array([0.003, 0.004]) / 1200.0
+    )
 
 
 def test_get_fac_draw_slice(tmp_path):
@@ -45,9 +49,15 @@ def test_get_fac_draw_slice(tmp_path):
     with h5py.File(mat_path, "w") as handle:
         handle.create_dataset("draws", data=data)
 
-    slice_ = get_fac_draw_slice(mat_path, 1, dataset="draws")
-    np.testing.assert_allclose(slice_, data[:, :, 1])
+    log_div_grow = np.linspace(0.0, 0.546, 547) / 1200.0
+
+    slice_ = get_fac_draw_slice(
+        mat_path, 1, dataset="draws", log_div_grow=log_div_grow
+    )
+    expected_slice = np.vstack([data[:, :, 1] / 1200.0, log_div_grow])
+    np.testing.assert_allclose(slice_, expected_slice)
 
     # Default dataset selection should also work.
-    slice_default = get_fac_draw_slice(mat_path, 2)
-    np.testing.assert_allclose(slice_default, data[:, :, 2])
+    slice_default = get_fac_draw_slice(mat_path, 2, log_div_grow=log_div_grow)
+    expected_default = np.vstack([data[:, :, 2] / 1200.0, log_div_grow])
+    np.testing.assert_allclose(slice_default, expected_default)
