@@ -29,6 +29,7 @@ class Params3aUnconstrained:
     phiQ_sign_raw: Array
     gamma0_last_raw: Array
     gamma1_free_2elts: Array
+    mu_h_bar_raw: Array
 
 
 @dataclass
@@ -51,6 +52,7 @@ class Params3a:
     phiQ_toprow: Array
     Gamma0: Array
     Gamma1: Array
+    mu_h_bar: Array
 
 
 def unit_lower_from_free(free_entries: Array) -> Array:
@@ -117,6 +119,8 @@ def constrain_params3a(
     Gamma1 = Gamma1.at[row_idx, cols - 2 : cols].set(jnp.asarray(u.gamma1_free_2elts, dtype=jnp.float64))
     Gamma1 = Gamma1.at[rows - 1, cols - 1].set(1200.0)
 
+    mu_h_bar = jnp.asarray(u.mu_h_bar_raw, dtype=jnp.float64)
+
     params = Params3a(
         Omega_diag=Omega_diag,
         L_g=L_g,
@@ -127,6 +131,7 @@ def constrain_params3a(
         phiQ_toprow=phiQ_toprow,
         Gamma0=Gamma0,
         Gamma1=Gamma1,
+        mu_h_bar=mu_h_bar,
     )
     return params, 0.0
 

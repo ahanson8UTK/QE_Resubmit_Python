@@ -163,7 +163,6 @@ def build_measurement_terms(
 
     QgQ = _as_array(fixed["Q_g^Q"])
     Lambda_gQ = fixed["Lambda_g^Q"]
-    mu_h_bar = _as_array(fixed["mu_h_bar"])
     Sigma_g = params3a.Sigma_g
     Gamma0 = params3a.Gamma0
     Gamma1 = params3a.Gamma1
@@ -173,7 +172,7 @@ def build_measurement_terms(
         Sigma_g,
         Gamma0,
         Gamma1,
-        np.asarray(mu_h_bar),
+        params3a.mu_h_bar,
         d_m,
         d_g,
     )

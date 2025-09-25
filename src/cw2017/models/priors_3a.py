@@ -42,6 +42,9 @@ def logprior_3a(u: Params3aUnconstrained, cfg: Dict[str, float]) -> jnp.float64:
     sigma_gamma1 = cfg.get("sigma_gamma1", 250.0)
     gamma1_prior = jnp.sum(_normal_logpdf(u.gamma1_free_2elts, 0.0, sigma_gamma1))
 
+    sigma_mu_h = cfg.get("sigma_mu_h", 0.5)
+    mu_h_prior = jnp.sum(_normal_logpdf(u.mu_h_bar_raw, 0.0, sigma_mu_h))
+
     return (
         log_omega_prior
         + L_prior
@@ -53,6 +56,7 @@ def logprior_3a(u: Params3aUnconstrained, cfg: Dict[str, float]) -> jnp.float64:
         + phi13sign_prior
         + gamma0_prior
         + gamma1_prior
+        + mu_h_prior
     )
 
 
