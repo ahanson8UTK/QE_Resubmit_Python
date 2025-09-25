@@ -7,7 +7,7 @@ from typing import Callable, Dict, Iterable
 import jax.numpy as jnp
 
 from ..equity.atsm_measurement import build_measurement_terms
-from ..kalman.sr_kf import cholesky_psd, compute_dg_diag_sq, sr_kf_loglik
+from ..kalman.sr_kf import sr_kf_loglik
 from ..math.fill_q import count_qs_entries
 from .parameters import Params3aUnconstrained, constrain_params3a
 from .priors_3a import logprior_3a
@@ -112,27 +112,6 @@ def make_logdensity_block3a(
         measurement_terms = build_measurement_terms(params3a, fixed, maturities)
         A0, A1, B, M0Q, M1Q = measurement_terms
 
-        R_chol = jnp.diag(jnp.sqrt(params3a.Omega_diag))
-        B_mat = _asarray(B)
-
-        mu_g = _asarray(fixed["mu_g"])
-        Ng = int(info["Ng"])
-        Gamma0_g = params3a.Gamma0[-Ng:]
-        Gamma1_g = params3a.Gamma1[-Ng:, :]
-        Sigma_g = params3a.Sigma_g
-        Phi_blocks = params3a.PhiP_blocks
-
-        def build_HR_fn(_, __):
-            return B_mat, R_chol
-
-        def build_FQ_fn(_, __, m_curr, h_curr, _t_idx):
-            diag_sq = compute_dg_diag_sq(Gamma0_g, Gamma1_g, h_curr)
-            Sigma_scaled = Sigma_g * diag_sq[None, :]
-            cov = Sigma_scaled @ Sigma_g.T
-            Q_chol = cholesky_psd(cov)
-            a_const = mu_g + Phi_blocks.Phi_gm @ m_curr + Phi_blocks.Phi_gh @ h_curr
-            return Phi_blocks.Phi_gg, Q_chol, a_const
-
         loglik, _ = sr_kf_loglik(
             params3a,
             fixed,
@@ -140,8 +119,8 @@ def make_logdensity_block3a(
             m_t,
             h_t,
             measurement_terms,
-            build_HR_fn,
-            build_FQ_fn,
+            None,
+            None,
         )
         log_prior = logprior_3a(u, cfg.get("priors_3a", {}))
         return log_prior + log_det_jac + loglik

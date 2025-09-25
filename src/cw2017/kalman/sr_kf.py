@@ -8,26 +8,13 @@ import jax.numpy as jnp
 import jax.scipy.linalg as jsp
 from jax import lax
 
+from .design import build_block3a_design
+from .utils import cholesky_psd, symmetrize_psd
+
 Array = jnp.ndarray
 
 _JITTER = 1e-10
 _LOG_2PI = jnp.log(2.0 * jnp.pi)
-
-
-def compute_dg_diag_sq(Gamma0_g: Array, Gamma1_g: Array, h_vec: Array) -> Array:
-    exponent = Gamma0_g + h_vec @ Gamma1_g.T
-    exponent = jnp.clip(exponent, -20.0, 20.0)
-    return jnp.exp(exponent)
-
-
-def symmetrize_psd(matrix: Array) -> Array:
-    return (matrix + matrix.T) * 0.5
-
-
-def cholesky_psd(matrix: Array) -> Array:
-    matrix = symmetrize_psd(matrix)
-    dim = matrix.shape[0]
-    return jsp.cholesky(matrix + _JITTER * jnp.eye(dim, dtype=matrix.dtype), lower=True)
 
 
 def _qr_lower(stack: Array) -> Array:
@@ -83,45 +70,31 @@ def sr_kf_loglik(
     m_t: Array,
     h_t: Array,
     measurement_terms: Tuple[Array, Array, Array, Array, Array],
-    build_HR: Callable[[Any, Dict[str, Array]], Tuple[Array, Array]],
-    build_FQ: Callable[[Any, Dict[str, Array], Array, Array, int], Tuple[Array, Array, Array]],
+    build_HR: Callable[[Any, Dict[str, Array]], Tuple[Array, Array]] | None,
+    build_FQ: Callable[[Any, Dict[str, Array], Array, Array, int], Tuple[Array, Array, Array]] | None,
 ) -> Tuple[jnp.float64, Dict[str, Array]]:
     """Run the SR-Kalman filter with time-varying process noise."""
 
-    y_t = jnp.asarray(y_t, dtype=jnp.float64)
-    m_t = jnp.asarray(m_t, dtype=jnp.float64)
-    h_t = jnp.asarray(h_t, dtype=jnp.float64)
+    del build_HR, build_FQ  # The design fully specifies the LDS inputs.
 
-    A0, A1, B, M0Q, M1Q = measurement_terms
-    A0_vec = jnp.asarray(A0, dtype=jnp.float64).reshape(-1)
-    A1_mat = jnp.asarray(A1, dtype=jnp.float64)
-    M0_vec = jnp.asarray(M0Q, dtype=jnp.float64).reshape(-1)
-    M1_mat = jnp.asarray(M1Q, dtype=jnp.float64)
-    mu_g_qu = jnp.asarray(fixed["mu_g^{Q,u}"], dtype=jnp.float64)
-    obs_offset = A0_vec + A1_mat @ (M0_vec + M1_mat @ mu_g_qu)
-    y_t_tilde = y_t - obs_offset
+    design = build_block3a_design(params3a, fixed, measurement_terms, y_t, m_t, h_t, ())
 
-    H_t, R_chol_t = build_HR(params3a, fixed)
-
-    Ng = params3a.Sigma_g.shape[0]
-    Gamma0_g = params3a.Gamma0[-Ng:]
-    Gamma1_g = params3a.Gamma1[-Ng:, :]
-
-    h0 = h_t[0]
-    diag_sq0 = compute_dg_diag_sq(Gamma0_g, Gamma1_g, h0)
-    Sigma_scaled0 = params3a.Sigma_g * diag_sq0[None, :]
-    cov0 = Sigma_scaled0 @ params3a.Sigma_g.T
-    S0 = cholesky_psd(cov0)
-    mean0 = params3a.PhiP_blocks.Phi_gh @ h0
+    observations = jnp.asarray(design.observations, dtype=jnp.float64)
+    H_t = jnp.asarray(design.measurement_matrix, dtype=jnp.float64)
+    R_chol_t = jnp.asarray(design.measurement_noise_chol, dtype=jnp.float64)
+    transition = jnp.asarray(design.transition_matrix, dtype=jnp.float64)
+    offsets = jnp.asarray(design.state_offsets, dtype=jnp.float64)
+    Q_chols = jnp.asarray(design.process_noise_chol, dtype=jnp.float64)
+    mean0 = jnp.asarray(design.initial_mean, dtype=jnp.float64)
+    S0 = jnp.asarray(design.initial_sqrt_cov, dtype=jnp.float64)
 
     def step(carry, inputs):
         mean_pred, sqrt_pred = carry
-        t_idx, y_curr, m_curr, h_curr = inputs
-        F_t, Q_chol_t, a_const = build_FQ(params3a, fixed, m_curr, h_curr, t_idx)
+        y_curr, offset_curr, Q_chol_curr = inputs
         innovation = y_curr - H_t @ mean_pred
         a_post, S_post, S_yy, ll_inc = sr_update(mean_pred, sqrt_pred, H_t, R_chol_t, innovation)
-        mean_next = a_const + F_t @ a_post
-        sqrt_next = sr_predict(S_post, F_t, Q_chol_t)
+        mean_next = offset_curr + transition @ a_post
+        sqrt_next = sr_predict(S_post, transition, Q_chol_curr)
 
         finite_flags = jnp.array(
             [
@@ -142,11 +115,10 @@ def sr_kf_loglik(
         }
         return (mean_next, sqrt_next), outputs
 
-    time_index = jnp.arange(y_t_tilde.shape[0])
     (_, _), outputs = lax.scan(
         step,
         (mean0, S0),
-        (time_index, y_t_tilde, m_t, h_t),
+        (observations, offsets, Q_chols),
     )
 
     loglik = jnp.sum(outputs["loglik"], dtype=jnp.float64)
@@ -159,6 +131,7 @@ def sr_kf_loglik(
         "innovations": outputs["innovation"],
         "innovation_sqrt": outputs["innovation_sqrt"],
         "nan_detected": nan_detected,
+        "design": design,
     }
     return loglik, aux
 
@@ -169,5 +142,4 @@ __all__ = [
     "sr_update",
     "symmetrize_psd",
     "cholesky_psd",
-    "compute_dg_diag_sq",
 ]
