@@ -1,0 +1,273 @@
+Important Modeling Equations and Restrictions
+
+1 Bond pricing a-la Creal and Wu (2017 IER)
+
+1.1 P-measure Dynamics
+
+m_{t+1}	=\mu_{m}+\Phi_{m}m_{t}+\Phi_{mg}g_{t}+\Phi_{mh}h_{t}+\Sigma_{m}D_{m,t}\epsilon_{m,t+1}
+g_{t+1}	=\mu_{g}+\Phi_{gm}m_{t}+\Phi_{g}g_{t}+\Phi_{gh}h_{t}+\Sigma_{gm}\epsilon_{m,t+1}+\Sigma_{g}D_{g,t}\epsilon_{g,t+1}
+h_{t+1}	=\mu_{h}+\Phi_{h}h_{t}+\Sigma_{hm}\epsilon_{m,t+1}+\Sigma_{hg}\epsilon_{g,t+1}+\Sigma_{h}\epsilon_{h,t+1}
+\left[\begin{array}{c}
+\epsilon_{m,t+1}\\
+\epsilon_{g,t+1}\\
+\epsilon_{h,t+1}
+\end{array}\right]	\sim N\left(0,I\right)
+
+• State m_{t}\in\mathbb{R}^{n_{m}}: perfectly observed. Drawn randomly from “fac_draws_K4.mat” and merged with log dividend growth from “sp500_data.csv”
+
+• State g_{t}\in\mathbb{R}^{n_{g}}: latent state. Rotated like Creal and Wu to represent \left[r_{t},er_{t}\left(n^{*}\right),tp_{t}\left(n^{*}\right)\right] the short rate, expected path of short rates for maturity n^{*}, and the term premium for maturity n^{*}. We set n^{*}=60 months
+
+• State h_{t}\in\mathbb{R}^{n_{h}}: latent volatilities such that\left[\begin{array}{c}
+diag\left(D_{m,t}\right)\\
+diag\left(D_{g,t}\right)
+\end{array}\right]=\exp\left\{ \frac{\Gamma_{0}+\Gamma_{1}h_{t}}{2}\right\} with the one restriction that the last element in diag\left(D_{m,t}\right) (which corresponds to log dividend growth) depends not on h_{t}, but on h_{t-1}. This is an important restriction for equity pricing convergence.
+
+• For our model, n_{h}=n_{m}+n_{g}-1
+
+• Further restrictions:
+
+– \Sigma_{m} is lower triangular with a unit diagonal. The final row is restricted to be all zeros except for the unit diagonal element.
+
+– \Sigma_{g} is lower triangular with unit diagonal.
+
+– Eigendecompose\left[\begin{array}{ccc}
+\Phi_{m} & \Phi_{mg} & \Phi_{mh}\\
+\Phi_{gm} & \Phi_{g} & \Phi_{gh}\\
+0 & 0 & \Phi_{h}
+\end{array}\right]\equiv\Phi_{f}=Q\Lambda Q^{-1}and restrict:
+
+∗ The first n_{m}+n_{g} eigenvalues to be in descending order
+
+∗ The final n_{h} eigenvalues to be in descending order.
+
+∗ All eigenvalues \lambda_{i}\in\left(-1,1\right)\ \forall i and real
+
+∗ Restrict Q such that:
+
+⋅ The bottom left (n_{h}\times\left(n_{m}+n_{g}\right)) block is all zeros
+
+⋅ The diagonal is all ones
+
+⋅ Define the diagonal matrix\tilde{\Lambda}=\frac{1}{n^{*}}\left(I-\Lambda^{n^{*}}\right)\left(I-\Lambda\right)^{-1}and set Q_{n_{m},n_{m}+1}=\frac{1}{\tilde{\lambda}_{n_{m}+1}} where \tilde{\lambda}_{n_{m}+1} is the n_{m}+1 diagonal element of \tilde{\Lambda}
+
+⋅ Set the row Q_{n_{m}+1,:} equal to the row Q_{n_{m},:} times a column vector of the \tilde{\lambda} eigenvalues.
+
+– Define the long run means\left[\begin{array}{c}
+\bar{\mu}_{m}\\
+\bar{\mu}_{g}\\
+\bar{\mu}_{h}
+\end{array}\right]=\left(I-\Phi_{f}\right)^{-1}\left[\begin{array}{c}
+\mu_{m}\\
+\mu_{g}\\
+\mu_{h}
+\end{array}\right]and restrict\bar{\mu}_{g}	=M_{1}\bar{\mu}_{g}^{u}
+M_{1}	\equiv\left[\begin{array}{cc}
+1 & 0\\
+1 & 0\\
+0 & 1
+\end{array}\right]
+
+– \Gamma_{0}\in\mathbb{R}^{n_{m}+n_{g}} is a vector of zeros, except the n_{m}+2 entry is a free parameter to be estimated.
+
+– \Gamma_{1}\in\mathbb{R}^{\left(n_{m}+n_{g}\right)\times n_{h}} follows:\Gamma_{1}=\left[\begin{array}{ccc}
+1200*I_{n_{m}} & 0 & 0\\
+0 & 1200 & 0\\
+0 & \gamma_{1,1} & \gamma_{1,2}\\
+0 & 0 & 1200
+\end{array}\right]where \gamma_{1,1} and \gamma_{1,2} are the only free parameters to be estimated
+
+1.2 Q-measure Dynamics
+
+g_{t+1}=\mu_{g}^{\mathbb{Q}}+\Phi_{g}^{\mathbb{Q}}g_{t}+\Sigma_{g}^{\mathbb{Q}}\epsilon_{g,t+1}^{\mathbb{Q}}
+
+• Restrictions:
+
+– \Sigma_{g}^{\mathbb{Q}}=\Sigma_{g}\bar{D}_{g}, where \left[\begin{array}{c}
+diag\left(\bar{D}_{m}\right)\\
+diag\left(\bar{D}_{g}\right)
+\end{array}\right]=\exp\left\{ \frac{\Gamma_{0}+\Gamma_{1}\bar{\mu}_{h}}{2}\right\} 
+
+– Eigendecompose\Phi_{g}^{\mathbb{Q}}=Q^{\mathbb{Q}}\Lambda^{\mathbb{Q}}\left(Q^{\mathbb{Q}}\right)^{-1}and restrict the eigenvalues in \Lambda^{\mathbb{Q}} to be real, monotonically descending, and bounded absolutely by one.
+
+– Restrict \bar{\mu}_{g}^{\mathbb{Q}}=\left(I-\Phi_{g}^{\mathbb{Q}}\right)^{-1}\mu_{g}^{\mathbb{Q}} as follows\bar{\mu}_{g}^{\mathbb{Q}}	=M_{0}^{\mathbb{Q}}+M_{1}^{\mathbb{Q}}\bar{\mu}_{g}^{\mathbb{Q},u}
+M_{0}^{\mathbb{Q}}	=\left[\begin{array}{c}
+m_{0}^{\mathbb{Q}}\\
+0\\
+0
+\end{array}\right]
+M_{1}^{\mathbb{Q}}	=\left[\begin{array}{cc}
+1 & 1\\
+1 & 0\\
+0 & 1
+\end{array}\right]where m_{0}^{\mathbb{Q}} will be defined later in the bond pricing section.
+
+– Define\tilde{\Lambda}^{\mathbb{Q}}=\frac{1}{n^{*}}\left(I-\left(\Lambda^{\mathbb{Q}}\right)^{n^{*}}\right)\left(I-\Lambda^{\mathbb{Q}}\right)^{-1}and restrict Q^{\mathbb{Q}} such thatQ^{\mathbb{Q}}=\left[\begin{array}{ccc}
+1 & 1 & 1\\
+\tilde{\lambda}_{1}^{\mathbb{Q}}-\frac{\lambda_{1}^{\mathbb{Q}}-\phi_{11}^{\mathbb{Q}}-\phi_{12}^{\mathbb{Q}}\tilde{\lambda}_{1}^{\mathbb{Q}}}{\phi_{13}^{\mathbb{Q}}-\phi_{12}^{\mathbb{Q}}} & \tilde{\lambda}_{1}^{\mathbb{Q}}-\frac{\lambda_{2}^{\mathbb{Q}}-\phi_{11}^{\mathbb{Q}}-\phi_{12}^{\mathbb{Q}}\tilde{\lambda}_{2}^{\mathbb{Q}}}{\phi_{13}^{\mathbb{Q}}-\phi_{12}^{\mathbb{Q}}} & \tilde{\lambda}_{1}^{\mathbb{Q}}-\frac{\lambda_{3}^{\mathbb{Q}}-\phi_{11}^{\mathbb{Q}}-\phi_{12}^{\mathbb{Q}}\tilde{\lambda}_{3}^{\mathbb{Q}}}{\phi_{13}^{\mathbb{Q}}-\phi_{12}^{\mathbb{Q}}}\\
+\frac{\lambda_{1}^{\mathbb{Q}}-\phi_{11}^{\mathbb{Q}}-\phi_{12}^{\mathbb{Q}}\tilde{\lambda}_{1}^{\mathbb{Q}}}{\phi_{13}^{\mathbb{Q}}-\phi_{12}^{\mathbb{Q}}} & \frac{\lambda_{2}^{\mathbb{Q}}-\phi_{11}^{\mathbb{Q}}-\phi_{12}^{\mathbb{Q}}\tilde{\lambda}_{2}^{\mathbb{Q}}}{\phi_{13}^{\mathbb{Q}}-\phi_{12}^{\mathbb{Q}}} & \frac{\lambda_{3}^{\mathbb{Q}}-\phi_{11}^{\mathbb{Q}}-\phi_{12}^{\mathbb{Q}}\tilde{\lambda}_{3}^{\mathbb{Q}}}{\phi_{13}^{\mathbb{Q}}-\phi_{12}^{\mathbb{Q}}}
+\end{array}\right]where \left\{ \phi_{11}^{\mathbb{Q}},\phi_{12}^{\mathbb{Q}},\phi_{13}^{\mathbb{Q}}\right\}  are the first row of \Phi_{g}^{\mathbb{Q}} and are free parameters to estimate along with the eigenvalues \left\{ \lambda_{1}^{\mathbb{Q}},\lambda_{2}^{\mathbb{Q}},\lambda_{3}^{\mathbb{Q}}\right\} 
+
+1.3 Bond Pricing
+
+Bonds are priced only by the Q-measure such that, if y_{t} represents bond yields of maturities \left\{ 3,6,12,36,60,84,120\right\}  months stacked in ascending order, theny_{t}	=A_{0}+A_{1}M_{0}^{\mathbb{Q}}+A_{1}M_{1}^{\mathbb{Q}}\bar{\mu}_{g}^{\mathbb{Q},u}+Bg_{t}+u_{t}
+u_{t}	\sim N\left(0,\Omega\right)where we assume \Omega  is diagonal and A_{0}, A_{1}, B, and m_{0}^{\mathbb{Q}} come from Gaussian ATSM recursions:
+
+• Each row of A_{0} is associated with a maturity length j and denoted a_{0,j} such thata_{0,j}=-\frac{1}{2j}\sum_{i=1}^{j-1}i^{2}b_{i}^{\prime}\Sigma_{g}^{\mathbb{Q}}\Sigma_{g}^{\mathbb{Q}\prime}b_{i}
+
+• Each row of A_{1} is associated with a maturity length j and denoted a_{1,j} such thata_{1,j}=\frac{1}{j}\left(\sum_{i=1}^{j-1}i\times b_{i}\right)\left(I-\Phi_{g}^{\mathbb{Q}}\right)
+
+• Each row of B is associated with a maturity length j and denoted b_{j} such thatb_{j}^{\prime}	=\frac{1}{j}\delta_{1}^{\prime}Q^{\mathbb{Q}}\left[I-\left(\Lambda^{\mathbb{Q}}\right)^{j}\right]\left(I-\Lambda^{\mathbb{Q}}\right)^{-1}\left(Q^{\mathbb{Q}}\right)^{-1}
+\delta_{1}	=\left[\begin{array}{c}
+1\\
+0\\
+0
+\end{array}\right]
+
+• And finallym_{0}^{\mathbb{Q}}=a_{0,n^{*}}
+
+Given g_{t} is latent, we use the following state space model for estimating loglikelihood:\left[\begin{array}{c}
+m_{t}\\
+y_{t}\\
+h_{t}
+\end{array}\right]	=\left[\begin{array}{c}
+0\\
+A_{0}+A_{1}M_{0}^{\mathbb{Q}}\\
+0
+\end{array}\right]+\left[\begin{array}{cccccc}
+I & 0 & 0 & 0 & 0 & 0\\
+0 & B & 0 & 0 & 0 & A_{1}M_{1}^{\mathbb{Q}}\\
+0 & 0 & I & 0 & 0 & 0
+\end{array}\right]\left[\begin{array}{c}
+m_{t}\\
+g_{t}\\
+h_{t}\\
+\bar{\mu}_{m}\\
+\bar{\mu}_{g}^{u}\\
+\bar{\mu}_{g}^{\mathbb{Q},u}
+\end{array}\right]+v_{t}
+\left[\begin{array}{c}
+m_{t+1}\\
+g_{t+1}\\
+h_{t+1}\\
+\bar{\mu}_{m}\\
+\bar{\mu}_{g}^{u}\\
+\bar{\mu}_{g}^{\mathbb{Q},u}
+\end{array}\right]	=\left[\begin{array}{c}
+\bar{\Phi}_{mh}\bar{\mu}_{h}\\
+\bar{\Phi}_{gh}\bar{\mu}_{h}\\
+\bar{\Phi}_{hh}\bar{\mu}_{h}\\
+0\\
+0\\
+0
+\end{array}\right]+\left[\begin{array}{cccccc}
+\Phi_{m} & \Phi_{mg} & \Phi_{mh} & \bar{\Phi}_{mm} & \bar{\Phi}_{mg} & 0\\
+\Phi_{gm} & \Phi_{g} & \Phi_{gh} & \bar{\Phi}_{gm} & \bar{\Phi}_{gg} & 0\\
+0 & 0 & \Phi_{h} & 0 & 0 & 0\\
+0 & 0 & 0 & I & 0 & 0\\
+0 & 0 & 0 & 0 & I & 0\\
+0 & 0 & 0 & 0 & 0 & I
+\end{array}\right]\left[\begin{array}{c}
+m_{t}\\
+g_{t}\\
+h_{t}\\
+\bar{\mu}_{m}\\
+\bar{\mu}_{g}^{u}\\
+\bar{\mu}_{g}^{\mathbb{Q},u}
+\end{array}\right]+\left[\begin{array}{ccc}
+\Sigma_{m}D_{m,t} & 0 & 0\\
+\Sigma_{gm}D_{m,t} & \Sigma_{g}D_{g,t} & 0\\
+\Sigma_{hm} & \Sigma_{hg} & \Sigma_{h}\\
+0 & 0 & 0\\
+0 & 0 & 0\\
+0 & 0 & 0
+\end{array}\right]\nu_{t}
+v_{t}	\sim N\left(0,\left[\begin{array}{ccc}
+0 & 0 & 0\\
+0 & \Omega & 0\\
+0 & 0 & 0
+\end{array}\right]\right)
+\left[\begin{array}{ccc}
+\bar{\Phi}_{mm} & \bar{\Phi}_{mg} & \bar{\Phi}_{mh}\\
+\bar{\Phi}_{mg} & \bar{\Phi}_{gg} & \bar{\Phi}_{gh}\\
+0 & 0 & \bar{\Phi}_{hh}
+\end{array}\right]	=\left(I-\Phi_{f}\right)L_{1}and \nu_{t} is white noise. Notice that this treats the states m_{t} and h_{t} as perfectly observable in the observation equation and the long run means \bar{\mu}_{m}, \bar{\mu}_{g}^{u}, and \bar{\mu}_{g}^{\mathbb{Q},u} as static states to be filtered! L_{1} is built block diagonal such thatL_{1}\equiv\left[\begin{array}{ccc}
+I & 0 & 0\\
+0 & M_{1} & 0\\
+0 & 0 & I
+\end{array}\right]
+
+2 Equity Pricing
+
+Because of the rotations and restrictions performed in the bond pricing stage, the first element of g_{t} is equal to the risk free rate. Given the bond pricing depended only on the Q-dynamics of g, we get the following stochastic discount factor:\mathcal{M}_{t+1}	=\exp\left\{ -r_{t}\right\} \exp\left\{ -\frac{1}{2}\left\Vert \Lambda_{g,t}\right\Vert ^{2}-\Lambda_{g,t}^{\prime}\epsilon_{g,t+1}\right\} 
+\Lambda_{g,t}	=\left(\Sigma_{g}D_{g,t}\right)^{-1}\left[\left(\mu_{g}-\mu_{g}^{\mathbb{Q}}\right)+\Phi_{gm}m_{t}+\left(\Phi_{g}-\Phi_{g}^{\mathbb{Q}}\right)g_{t}+\Phi_{gh}h_{t}\right]Then the price-dividend ratio for equities can be written\frac{V_{t}}{D_{t}}	=\sum_{n=0}^{\infty}\exp\left\{ A_{n}+B_{n}m_{t}+C_{n}g_{t}+D_{n}\left(m_{t},g_{t},h_{t}\right)\right\} where the coefficients areA_{n}	=A_{n-1}+\left(e_{d}^{\prime}+B_{n-1}\right)\mu_{m}+C_{n-1}\mu_{g}^{\mathbb{Q}}+e_{d}^{\prime}\Phi_{mh}\mu_{h}
+	+\frac{1}{2}e_{d}^{\prime}\Phi_{mh}\Sigma_{hm}\Sigma_{hm}^{\prime}\Phi_{mh}^{\prime}e_{d}+\frac{1}{2}e_{d}^{\prime}\Phi_{mh}\Sigma_{h}\Sigma_{h}^{\prime}\Phi_{mh}^{\prime}e_{d}
+	+\frac{1}{2}\left[C_{n-1}\Sigma_{g}^{\mathbb{Q}}+e_{d}^{\prime}\Phi_{mh}\Sigma_{hg}\right]\times\left[C_{n-1}\Sigma_{g}^{\mathbb{Q}}+e_{d}^{\prime}\Phi_{mh}\Sigma_{hg}\right]^{\prime}
+B_{n}	=\left(e_{d}^{\prime}+B_{n-1}\right)\Phi_{m}
+C_{n}	=-e_{1}^{\prime}+\left(e_{d}^{\prime}+B_{n-1}\right)\Phi_{mg}+C_{n-1}\Phi_{g}^{\mathbb{Q}}
+D_{n}\left(m_{t},g_{t},h_{t}\right)	=\left(e_{d}^{\prime}+B_{n-1}\right)\Phi_{mh}h_{t}+e_{d}^{\prime}\Phi_{mh}\Phi_{h}h_{t}+\sigma_{\Delta d,t}^{2}\left(h_{t}\right)-e_{d}^{\prime}\Phi_{mh}\Sigma_{hg}\Lambda_{g,t}
+	+\left(e_{d}^{\prime}+B_{n-1}\right)\Sigma_{m}D_{m,t}\Sigma_{hm}^{\prime}\Phi_{mh}^{\prime}e_{d}+\frac{1}{2}\left(e_{d}^{\prime}+B_{n-1}\right)\Sigma_{m}D_{m,t}D_{m,t}^{\prime}\Sigma_{m}^{\prime}\left(e_{d}^{\prime}+B_{n-1}\right)^{\prime}where \sigma_{\Delta d}^{2}\left(h_{t}\right)	\equiv\frac{1}{2}e_{d}^{\prime}\Sigma_{m}D_{m,t+1}^{2}\Sigma_{m}^{\prime}e_{d}
+	=\frac{1}{2}\left(\Gamma_{0,\Delta d}+\Gamma_{2,\left\{ \Delta d,:\right\} }h_{t}\right)is the driven variance of log dividend growth.
+
+For convergence we have the following additional restriction (eigenvalue restriction handled already):0	>\theta_{m}\bar{\mu}_{m}+\theta_{g}\bar{\mu}_{g}^{u}+\theta_{g}^{\mathbb{Q}}\bar{\mu}_{g}^{\mathbb{Q},u}+V
+\theta_{m}	=e_{d}^{\prime}\left(I-\Phi_{m}\right)^{-1}\bar{\Phi}_{mm}
+\theta_{g}	=e_{d}^{\prime}\left(I-\Phi_{m}\right)^{-1}\bar{\Phi}_{mg}
+\theta_{g}^{\mathbb{Q}}	=\left[e_{d}^{\prime}\left(I-\Phi_{m}\right)^{-1}\Phi_{mg}-e_{1}^{\prime}\right]M_{1}^{\mathbb{Q}}
+V	=\left[e_{d}^{\prime}\left(I-\Phi_{m}\right)^{-1}\bar{\Phi}_{mh}+e_{d}^{\prime}\Phi_{mh}\bar{\Phi}_{hh}\right]\bar{\mu}_{h}
+	+\left[e_{d}^{\prime}\left(I-\Phi_{m}\right)^{-1}\Phi_{mg}-e_{1}^{\prime}\right]M_{0}^{\mathbb{Q}}
+	+\frac{1}{2}\left[e_{d}^{\prime}\left(I-\Phi_{m}\right)^{-1}\Phi_{mg}-e_{1}^{\prime}\right]\left(I-\Phi_{g}^{\mathbb{Q}}\right)^{-1}\Sigma_{g}^{\mathbb{Q}}\left[\left[e_{d}^{\prime}\left(I-\Phi_{m}\right)^{-1}\Phi_{mg}-e_{1}^{\prime}\right]\left(I-\Phi_{g}^{\mathbb{Q}}\right)^{-1}\Sigma_{g}^{\mathbb{Q}}+e_{d}^{\prime}\Phi_{mh}\Sigma_{hg}\right]
+	+\frac{1}{2}e_{d}^{\prime}\Phi_{mh}\left[\Sigma_{hm}\Sigma_{hm}^{\prime}+\Sigma_{h}\Sigma_{h}^{\prime}\right]\Phi_{mh}^{\prime}e_{d}+\frac{1}{2}\left(e_{d}^{\prime}\Phi_{mh}\Sigma_{hg}\right)\left(e_{d}^{\prime}\Phi_{mh}\Sigma_{hg}\right)^{\prime}
+
+The “net-fundamental value” of equities is then defined as\bar{V}_{t}=V_{t}-\left[\sum_{n=0}^{\infty}\exp\left\{ A_{n}+B_{n}m_{t}+C_{n}g_{t}+D_{n}\left(m_{t},g_{t},h_{t}\right)\right\} \right]D_{t}where V_{t} and D_{t} are observed price and dividend stream data of the equity.
+
+3 Bubble Filtering
+
+We now decompose the “net-fundamental value” of the equity as a latent bubble term plus noise:\bar{V}_{t}	=B_{t}+\eta_{t}
+\eta	\sim N\left(0,\sigma_{\eta}^{2}\right)An asset bubble must followE_{t}\left[\frac{B_{t+1}}{B_{t}}\exp\left\{ m_{t+1}\right\} \right]=1Assume bubble growth is correlated with the log SDF and has stochastic volatility as well so\frac{B_{t+1}}{B_{t}}	=\frac{1}{E_{t}\left[\exp\left\{ m_{t+1}\right\} \right]}-\frac{Cov_{t}\left(\exp\left\{ m_{t+1}\right\} ,\frac{B_{t+1}}{B_{t}}\right)}{E_{t}\left[\exp\left\{ m_{t+1}\right\} \right]}+\exp\left\{ \frac{\sigma_{h}}{2}h_{b,t+1}\right\} \epsilon_{b,t+1}
+h_{b,t+1}	=\mu_{b}+\phi_{b}h_{b,t}+z_{b,t+1}and the covariance is nonzero through\left[\begin{array}{c}
+\epsilon_{b,t+1}\\
+\epsilon_{m,t+1}\\
+\epsilon_{g,t+1}
+\end{array}\right]\overset{iid}{\sim}N\left[0,\left[\begin{array}{ccc}
+1 & \rho_{bm}^{\prime} & \rho_{bg}^{\prime}\\
+\rho_{bm} & I & 0\\
+\rho_{bg} & 0 & I
+\end{array}\right]\right]Then bubble growth follows\frac{B_{t+1}}{B_{t}}	=\underbrace{\exp\left\{ r_{t}\right\} }_{\text{risk free rate}}
+	+\underbrace{\rho_{bg}^{\prime}\Lambda_{g,t}\exp\left\{ \frac{\sigma_{h}}{2}\left(\mu_{b}+\phi_{b}h_{b,t}\right)+\frac{1}{8}\sigma_{h}^{2}\right\} }_{\text{expected bubbly excess return}}
+	+\underbrace{\exp\left\{ \frac{\sigma_{h}}{2}h_{b,t+1}\right\} \left[\left(\rho_{bm}-\rho_{bg}D_{g,t}^{-1}\Sigma_{g}^{-1}\Sigma_{gm}D_{m,t}\right)\Lambda_{m,t+1}^{\mathbb{P}}+\rho_{bg}\Lambda_{g,t+1}^{\mathbb{P}}\right]}_{\text{time-varying leverage}}
+	+\underbrace{\exp\left\{ \frac{\sigma_{h}}{2}h_{b,t+1}\right\} \sqrt{1-\rho_{bm}^{\prime}\rho_{bm}-\rho_{bg}^{\prime}\rho_{bg}}}_{\text{stochastic volatility}}\bar{\varepsilon}_{b,t+1}
+\Lambda_{g,t}	=\left(\Sigma_{g}D_{g,t}\right)^{-1}\left[\left(\mu_{g}-\mu_{g}^{\mathbb{Q}}\right)+\Phi_{gm}m_{t}+\left(\Phi_{g}-\Phi_{g}^{\mathbb{Q}}\right)g_{t}+\Phi_{gh}h_{t}\right]
+\Lambda_{m,t+1}^{\mathbb{P}}	=\left(\Sigma_{m}D_{m,t}\right)^{-1}\left(m_{t+1}-\mu_{m}-\Phi_{m}m_{t}-\Phi_{mg}g_{t}-\Phi_{mh}h_{t}\right)
+\Lambda_{g,t+1}^{\mathbb{P}}	=\left(\Sigma_{g}D_{g,t}\right)^{-1}\left(g_{t+1}-\mu_{g}-\Phi_{gm}m_{t}-\Phi_{g}g_{t}-\Phi_{gh}h_{t}\right)
+r_{t}	=g_{1,t}which has a log-likelihood\ell\left[\frac{B_{t+1}}{B_{t}}\mid\mathcal{F}_{t},g_{t+1},h_{t+1}\right]=\ln\int_{-\infty}^{\infty}f\left(\frac{B_{t+1}}{B_{t}},\chi\mid\mathcal{F}_{t},g_{t+1},h_{t+1}\right)\phi\left(\chi\right)d\chi where \phi\left(\cdot\right) is the standard normal distribution and f\left(\cdot\right) is the normal pdf with mean \mu_{t}^{*} and variance \sigma_{t}^{2} given by\mu_{t}^{*}\left(\chi\right)	=\exp\left\{ r_{t}\right\} +\rho_{bg}^{\prime}\Lambda_{g,t}\exp\left\{ \frac{\sigma_{h}}{2}\left(\mu_{b}+\phi_{b}h_{b,t}\right)+\frac{1}{8}\sigma_{h}^{2}\right\} 
+	+\exp\left\{ \frac{\sigma_{h}}{2}\left[\mu_{b}+\phi_{b}h_{b,t}+\chi\right]\right\} \left[\left(\rho_{bm}-\rho_{bg}D_{g,t}^{-1}\Sigma_{g}^{-1}\Sigma_{gm}D_{m,t}\right)\Lambda_{m,t+1}^{\mathbb{P}}\right]
+	+\exp\left\{ \frac{\sigma_{h}}{2}\left[\mu_{b}+\phi_{b}h_{b,t}+\chi\right]\right\} \left[\rho_{bg}\Lambda_{g,t+1}^{\mathbb{P}}\right]
+\sigma_{t}^{2}\left(\chi\right)	=\exp\left\{ \sigma_{h}\left[\mu_{b}+\phi_{b}h_{b,t}+\chi\right]\right\} \left(1-\rho_{bm}^{\prime}\rho_{bm}-\rho_{bg}^{\prime}\rho_{bg}\right)Given observations of the equity net-fundamental value, the data log-likelihood is\ell\left[y_{1:T}\mid\theta,\mathcal{F}_{0:T}\right]=\ln\prod_{s=1}^{T}\int f\left(\prod_{k=0}^{s-1}\frac{B_{s-k}}{B_{s-k-1}}B_{0}-\eta_{s}\right)f\left(\eta_{s}\right)d\nu_{s}If we marginalize out \sigma_{\eta}^{2} using a Jeffrey's prior, the free parameters to estimate are \theta=\left\{ B_{0},\mu_{b},\phi_{b},\sigma_{h},\rho_{bm},\rho_{bg}\right\} .
+
+We recognize that the data density can be reparameterizedIn the language of [pmhmc], there is a deterministic mapping \gamma_{k}:\Theta\times\mathbb{R}^{2} such that \left\{ B_{k},h_{b,k}\right\} =\gamma_{k}\left(\theta,u_{k}\right) and u_{k}\sim N\left(0,I_{2}\right). in terms of an auxiliary variable u=\left[z_{b,1:T}^{\prime},\bar{\varepsilon}_{b,1:T}^{\prime}\right]\in\mathbb{R}^{T^{2}} which is a multivariate standard normal distribution. [pmhmc] show that we can generate proposals for \theta  using the extended target density\bar{\pi}\left(\theta,u\right)\propto p\left(\theta\right)\hat{p}\left(y_{1:T}\mid\theta,u\right)\phi\left(u\right)where p\left(\theta\right) is the prior probability, and \phi\left(u\right) is the multivariate standard normal pdf. Define X_{t}\equiv\left[\frac{B_{t}}{B_{t-1}},h_{b,t}\right]. The data densities can be approximated by a much simpler importance sampler method and proposals can be generated using the following Hamiltonian Monte Carlo system:H\left(\theta,\rho_{\theta},u,\rho_{u}\right)	=-\ln p\left(\theta\right)-\ln\hat{p}\left(y_{1:T}\mid\theta,u\right)+\frac{1}{2}\left\{ \rho_{\theta}^{\prime}\rho_{\theta}+u^{\prime}u+\rho_{u}^{\prime}\rho_{u}\right\} 
+\frac{d}{dt}\left[\begin{array}{c}
+\theta\\
+\rho_{\theta}\\
+u\\
+\rho_{u}
+\end{array}\right]	=\left[\begin{array}{c}
+\rho_{\theta}\\
+\nabla_{\theta}\ln p\left(\theta\right)+\nabla_{\theta}\ln\hat{p}\left(y_{1:T}\mid\theta,u\right)\\
+\rho_{u}\\
+-u+\nabla_{u}\ln\hat{p}\left(y_{1:T}\mid\theta,u\right)
+\end{array}\right]where the drifts come from the importance sampler:\nabla_{\theta}\ln\hat{p}\left(y_{1:T}\mid\theta,U\right)	=\sum_{s=1}^{T}\sum_{i=1}^{N}\frac{\omega\left(y_{s},U_{s,i}\mid\theta\right)}{\sum_{j=1}^{N}\omega\left(y_{s},U_{s,j}\mid\theta\right)}\nabla_{\theta}\ln\omega\left(y_{s},U_{s,i}\mid\theta\right)
+\nabla_{U_{s,i}}\ln\hat{p}\left(y_{1:T}\mid\theta,U\right)	=\frac{\omega\left(y_{s},U_{s,i}\mid\theta\right)}{\sum_{j=1}^{N}\omega\left(y_{s},U_{s,j}\mid\theta\right)}\nabla_{U_{s,i}}\ln\omega\left(y_{s},U_{s,i}\mid\theta\right)
+\omega\left(y_{s},U_{s,i}\mid\theta\right)	=\frac{p\left(y_{s}\mid\theta,U_{s,i}\right)p\left(X_{s}\mid\theta,X_{s-1}\right)}{q\left(X_{s}\mid\theta,y_{s}\right)}
+	=\frac{p\left(y_{s}\mid\theta,U_{s,i}\right)\phi\left(U_{1,s,i}\right)\int_{-\infty}^{\infty}f\left(X_{1,s},\chi\mid\mathcal{F}_{s-1},g_{s},h_{s}\right)\phi\left(\chi\right)d\chi}{q\left(X_{s}\mid\theta,y_{s}\right)}where U_{s,i}=\left[z_{b,s,i},\bar{\varepsilon}_{b,s,i}\right]. We choose a proposal density where X_{s} is multivariate normal such thatq\left(X_{s}\mid\theta,y_{s}\right)	=\phi\left(z_{b,s,i}\right)\phi\left(\mu_{X,s},\sigma_{X,s}^{2}\right)
+\mu_{X,s}	=\exp\left\{ r_{t}\right\} +\rho_{bg}^{\prime}\Lambda_{g,t}\exp\left\{ \frac{\sigma_{h}}{2}\frac{\mu_{b}}{1-\phi_{b}}+\frac{1}{8}\sigma_{h}^{2}\right\} 
+	+\exp\left\{ \frac{\sigma_{h}}{2}\frac{\mu_{b}}{1-\phi_{b}}\right\} \left[\left(\rho_{bm}-\rho_{bg}D_{g,t}^{-1}\Sigma_{g}^{-1}\Sigma_{gm}D_{m,t}\right)\Lambda_{m,t+1}^{\mathbb{P}}+\rho_{bg}\Lambda_{g,t+1}^{\mathbb{P}}\right]
+\sigma_{X,s}^{2}	=\exp\left\{ \sigma_{h}\frac{\mu_{b}}{1-\phi_{b}}\right\} \left(1-\rho_{bm}^{\prime}\rho_{bm}-\rho_{bg}^{\prime}\rho_{bg}\right)which reflects the bubble growth rate being normally distributed conditional on h at its deterministic steady state value. Thus the weights becomeWork on simplifying\frac{p\left(y_{s}\mid\theta,U_{s,i}\right)\int_{-\infty}^{\infty}f\left(X_{1,s},\chi\mid\mathcal{F}_{s-1},g_{s},h_{s}\right)\phi\left(\chi\right)d\chi}{\phi\left(\mu_{X,s},\sigma_{X,s}^{2}\right)}	=p\left(y_{s}\mid\theta,U_{s,i}\right)\int_{-\infty}^{\infty}\frac{f\left(X_{1,s},\chi\mid\mathcal{F}_{s-1},g_{s},h_{s}\right)}{\phi\left(\mu_{X,s},\sigma_{X,s}^{2}\right)}\phi\left(\chi\right)d\chi
+\frac{f\left(X_{1,s},\chi\mid\mathcal{F}_{s-1},g_{s},h_{s}\right)}{\phi\left(\mu_{X,s},\sigma_{X,s}^{2}\right)}	=\mathcal{N}\left(X_{1,s}\mid\bar{\mu}_{s},\bar{\sigma_{s}}\right)\times\mathcal{Z}where\bar{\sigma_{s}}^{2}	=\left(\frac{1}{\sigma_{s}^{2}}-\frac{1}{\sigma_{X,s}^{2}}\right)^{-1}
+	=\left(\exp\left\{ -\sigma_{h}\left[\mu_{b}+\phi_{b}h_{b,s}+\chi\right]\right\} \left(1-\rho^{\prime}\rho\right)^{-1}-\exp\left\{ -\sigma_{h}\frac{\mu_{b}}{1-\phi_{b}}\right\} \left(1-\rho^{\prime}\rho\right)^{-1}\right)^{-1}
+	=\exp\left\{ \sigma_{h}\frac{\mu_{b}}{1-\phi_{b}}\right\} \left(\exp\left\{ -\sigma_{h}\left[\phi_{b}h_{b,s}+\chi-\frac{\phi_{b}}{1-\phi_{b}}\mu_{b}\right]\right\} -1\right)^{-1}\left(1-\rho^{\prime}\rho\right)
+	=\exp\left\{ \sigma_{h}\frac{\mu_{b}}{1-\phi_{b}}\right\} \frac{\exp\left\{ \sigma_{h}\left[\phi_{b}h_{b,s}+\chi-\frac{\phi_{b}}{1-\phi_{b}}\mu_{b}\right]\right\} }{1-\exp\left\{ \sigma_{h}\left[\phi_{b}h_{b,s}+\chi-\frac{\phi_{b}}{1-\phi_{b}}\mu_{b}\right]\right\} }\left(1-\rho^{\prime}\rho\right)
+	=\exp\left\{ \sigma_{h}\frac{\mu_{b}}{1-\phi_{b}}\right\} \frac{\exp\left\{ \sigma_{h}\left[\mu_{b}\sum_{i=1}^{s-1}\phi_{b}^{i}+\sum_{j=0}^{s-1}\phi_{b}^{j+1}U_{2,s-j,i}+\phi_{b}^{s+1}h_{b,0}+\chi-\frac{\phi_{b}}{1-\phi_{b}}\mu_{b}\right]\right\} }{1-\exp\left\{ \sigma_{h}\left[\mu_{b}\sum_{i=1}^{s-1}\phi_{b}^{i}+\sum_{j=0}^{s-1}\phi_{b}^{j+1}U_{2,s-j,i}+\phi_{b}^{s+1}h_{b,0}+\chi-\frac{\phi_{b}}{1-\phi_{b}}\mu_{b}\right]\right\} }\left(1-\rho^{\prime}\rho\right)where the last line uses the Wold decomposition for h_{b,s}.\bar{\mu}_{s}	=\frac{\bar{\sigma_{s}}^{2}}{\sigma_{X,s}^{2}}\left[\frac{\sigma_{X,s}^{2}}{\sigma_{s}^{2}}\mu_{s}^{*}-\mu_{X,s}\right]
+\mathcal{Z}	=\sqrt{2\pi\left(\sigma_{X,s}^{2}-\sigma_{s}^{2}\right)}\frac{\sigma_{X,s}^{2}}{\sigma_{X,s}^{2}-\sigma_{s}^{2}}\exp\left\{ \frac{\left(\mu_{s}^{*}-\mu_{X,s}\right)^{2}}{2\left(\sigma_{X,s}^{2}-\sigma_{s}^{2}\right)}\right\} \omega\left(y_{s},U_{s,i}\mid\theta\right)	=\frac{p\left(y_{s}\mid\theta,U_{s,i}\right)\int_{-\infty}^{\infty}f\left(X_{1,s},\chi\mid\mathcal{F}_{s-1},g_{s},h_{s}\right)\phi\left(\chi\right)d\chi}{\phi\left(\mu_{X,s},\sigma_{X,s}^{2}\right)}for which we need the gradients. These are analytically intractable, so we estimate them numerically.
+
+3.1 Strictly Positive Bubble
+
+Rational bubble models make the assumption that B_{t}\geq0\ \forall t and B_{t+1}=0\ \text{if}\ B_{t}=0. If B_{0}>0, we can equivalently require that X_{2,t,i}\geq0\ \forall t,i. Implementation is straightforward by assuming f\left(X_{1,s},\chi\mid\mathcal{F}_{s-1},g_{s},h_{s}\right) and \phi\left(\mu_{X,s},\sigma_{X,s}^{2}\right) follow (left) truncated normal distributions such that\omega\left(y_{s},U_{s,i}\mid\theta\right)=p\left(y_{s}\mid\theta,U_{s,i}\right)\int_{-\infty}^{\infty}\frac{f\left(X_{1,s},\chi\mid\mathcal{F}_{s-1},g_{s},h_{s}\right)}{\phi\left(\mu_{X,s},\sigma_{X,s}^{2}\right)}\frac{1-\Phi\left(-\frac{\mu_{X,s}}{\sigma_{X,s}}\right)}{1-\Phi\left(-\frac{\mu_{s}^{*}\left(\chi\right)}{\sigma_{s}\left(\chi\right)}\right)}\frac{\sigma_{X,s}}{\sigma_{s}\left(\chi\right)}\phi\left(\chi\right)d\chi where \Phi\left(\cdot\right) is the standard normal CDF.
