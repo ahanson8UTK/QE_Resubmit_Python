@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, Tuple
+from pathlib import Path
+from typing import Any, Dict, Mapping, Tuple
 
 import jax
 
+from data.market_data import get_fac_draw_slice, load_market_data
 from sampling.hmc_block import HMCConfig, HMCCache, NUTSBlock
 from sampling.diagnostics import write_jsonl
 
@@ -37,17 +39,59 @@ def _logpost_block3b(theta_c: Any, ctx: Dict[str, Any]) -> Tuple[jax.Array, Dict
     return loglik + logprior, {"loglik": loglik, "logprior": logprior}
 
 
+def _resolve_path(value: Any, default: Path) -> Path:
+    if value is None:
+        return default
+    return Path(value)
+
+
+def _ensure_observables(
+    state: Dict[str, Any],
+    data_sources: Mapping[str, Any] | None,
+) -> Tuple[Any, Any]:
+    """Load bond yields and factor slice if they are not already present."""
+
+    bond_yields = state.get("bond_yields")
+    m_slice = state.get("m_slice")
+    if bond_yields is not None and m_slice is not None:
+        return bond_yields, m_slice
+
+    sources: Mapping[str, Any] = data_sources or state.get("data_sources") or {}
+
+    bond_csv = _resolve_path(sources.get("bond_yields_csv"), Path("data/bond_yields.csv"))
+    sp500_csv = _resolve_path(sources.get("sp500_csv"), Path("data/sp500_data.csv"))
+    fac_draws_mat = _resolve_path(sources.get("fac_draws_mat"), Path("data/fac_draws_K4.mat"))
+    fac_draws_dataset = sources.get("fac_draws_dataset")
+    fac_draws_index = int(sources.get("fac_draws_index", state.get("fac_draws_index", 0)))
+
+    market = load_market_data(bond_csv, sp500_csv)
+    m_slice = get_fac_draw_slice(
+        fac_draws_mat,
+        fac_draws_index,
+        dataset=fac_draws_dataset,
+        log_div_grow=market.log_div_grow,
+    )
+
+    state["bond_yields"] = market.bond_yields
+    state["m_slice"] = m_slice
+    state.setdefault("log_div_grow", market.log_div_grow)
+    return state["bond_yields"], state["m_slice"]
+
+
 def run_bond_sweep(
     rng_key: jax.Array,
     state: Dict[str, Any],
     caches: Dict[str, HMCCache],
     cfg_blocks: Dict[str, HMCConfig],
+    data_sources: Mapping[str, Any] | None = None,
     save_diag_path: str = "results/diagnostics/bond_sweep.jsonl",
 ) -> Tuple[Dict[str, Any], Dict[str, HMCCache]]:
     """Execute blocks 3a–3e for a single Gibbs sweep."""
 
     t0 = time.perf_counter()
     key = rng_key
+
+    bond_yields, m_slice = _ensure_observables(state, data_sources)
 
     # ----- Block 3a -----
     key, subkey = jax.random.split(key)
@@ -57,6 +101,8 @@ def run_bond_sweep(
         "logprior": state.get("logprior_block3a"),
         "priors": state.get("priors"),
         "reconstruct_theta": state.get("reconstruct_theta_3a"),
+        "bond_yields": bond_yields,
+        "m_slice": m_slice,
     }
     if ctx3a["loglikelihood"] is None:
         ctx3a["loglikelihood"] = state.get("loglikelihood")
@@ -83,6 +129,8 @@ def run_bond_sweep(
         "logprior": state.get("logprior_block3b"),
         "priors": state.get("priors"),
         "reconstruct_theta": state.get("reconstruct_theta_3b"),
+        "bond_yields": bond_yields,
+        "m_slice": m_slice,
     }
     if ctx3b["loglikelihood"] is None:
         ctx3b["loglikelihood"] = state.get("loglikelihood")
