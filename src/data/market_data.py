@@ -61,7 +61,7 @@ def load_market_data(
         bond_df.iloc[:, 1:]
         .apply(pd.to_numeric, errors="coerce")
         .to_numpy(dtype=float, copy=False)
-    )
+    ) / 1200.0
 
     sp500_df = pd.read_csv(_require_file(sp500_csv))
     # Skip the first two data rows as requested (rows 3-end in 1-based indexing).
@@ -69,7 +69,7 @@ def load_market_data(
     numeric = data_slice.apply(pd.to_numeric, errors="coerce")
     sp500_price = numeric.iloc[:, 0].to_numpy(dtype=float, copy=False)
     sp500_div = numeric.iloc[:, 1].to_numpy(dtype=float, copy=False)
-    log_div_grow = numeric.iloc[:, 3].to_numpy(dtype=float, copy=False)
+    log_div_grow = numeric.iloc[:, 3].to_numpy(dtype=float, copy=False) / 1200.0
 
     return MarketData(
         bond_yields=bond_yields,
@@ -84,12 +84,15 @@ def get_fac_draw_slice(
     nn: int,
     *,
     dataset: str | None = None,
+    log_div_grow: Iterable[float] | np.ndarray | None = None,
 ) -> np.ndarray:
     """Return the ``nn``-th slice of the factor draws tensor using ``h5py``.
 
     The ``fac_draws_K4.mat`` file stores a tensor with shape ``(4, 547, N)``.
     Rather than loading the entire tensor, this helper reads only the
-    two-dimensional slice requested by ``nn``.
+    two-dimensional slice requested by ``nn``. The slice is scaled by ``1/1200``
+    and the provided ``log_div_grow`` series is appended as the final row,
+    yielding an array with shape ``(5, 547)``.
     """
 
     if nn < 0:
@@ -118,5 +121,19 @@ def get_fac_draw_slice(
         # h5py reads only the requested slice into memory.
         slice_ = data[:, :, nn]
 
-    return np.asarray(slice_, dtype=float)
+    slice_array = np.asarray(slice_, dtype=float) / 1200.0
+
+    if log_div_grow is None:
+        raise ValueError("'log_div_grow' must be provided to append to the factor slice")
+
+    log_div_array = np.asarray(log_div_grow, dtype=float)
+    if log_div_array.ndim != 1:
+        raise ValueError("'log_div_grow' must be a one-dimensional sequence")
+
+    if log_div_array.shape[0] != slice_array.shape[1]:
+        raise ValueError(
+            "Length of 'log_div_grow' must match the second dimension of the factor slice"
+        )
+
+    return np.vstack([slice_array, log_div_array])
 
