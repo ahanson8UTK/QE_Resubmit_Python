@@ -1,0 +1,166 @@
+Workflow Overview
+
+1 Initialization
+
+1. Have a single CLI wrapper that can edit a config file to change default parameter values and will run everything else that follows
+
+2. File containing priors for all parameters of the model. Detailed accounting of parameters in separate pdf.
+
+3. Import bond yield data from “bond_yields.csv”
+
+(a) Treat first row as headers
+
+(b) First column as date
+
+(c) 2nd-8th column as yield data for maturities \left[3,6,12,36,60,84,120\right] in that order
+
+4. Import S&P 500 data from “sp500_data.csv”
+
+(a) First row is headers
+
+(b) Columns are in order: [Price, Dividend, Date, Log Dividend Growth]
+
+5. Divide all bond yields and the log dividend growth series by 1200
+
+6. Store “fac_draws_K4.mat” in some manner where we can draw 2D arrays from the stored 3D tensor along the 3rd dimensionally randomly. Ideally we don't load the whole tensor into memory, but only access one randomized slice at a time per MCMC iteration for the states m_{t}.
+
+7. Draw initial parameters for bond pricing, latent series g_{t} and h_{t}, parameters for bubble filtering, and auxiliary series z_{b,t} and \bar{\epsilon}_{b,t}.
+
+8. Everything that follows is nested in an MCMC loop with a pre-specified burnin period, diagnostic tracking, and termination condition (ESS or iterations)
+
+2 Macrofundamental States
+
+1. Draw a new array slice for m_{t} at random. 
+
+2. Divide the entire array by 1200.
+
+3. Append the log dividend growth series along the time dimension as the last variable in the array.
+
+4. Pass this array as states m_{t} to the rest of the MCMC iteration
+
+3 Bond Pricing
+
+1. Gibbs block 1: most of the P-measure parameters
+
+(a) This includes diagonal elements of \Omega , free parameters in \Sigma_{g}, P-measure eigenvalues \lambda , P-measure eigenvector elements q, the top row of \Phi_{g}^{\mathbb{Q}}, long run volatility mean \bar{\mu}_{h}, the free parameter in \Gamma_{0}, and the two free parameters in \Gamma_{1}
+
+(b) Condition on all other parameters as well as the draw for h_{t}.
+
+(c) Marginalize out g_{t} by using the square-root Kalman filter on the state space model shown in “model_writeup.pdf” section 1.3.
+
+(d) Given we condition on the other long run means \bar{\mu}_{m}, \bar{\mu}_{g}^{u}, and \bar{\mu}_{g}^{\mathbb{Q},u}, we may be better off estimating a more compact state space model:\left[\begin{array}{c}
+m_{t}\\
+y_{t}\\
+h_{t}
+\end{array}\right]	=\left[\begin{array}{c}
+0\\
+A_{0}+A_{1}M_{0}^{\mathbb{Q}}+A_{1}M_{1}^{\mathbb{Q}}\bar{\mu}_{g}^{\mathbb{Q},u}\\
+0
+\end{array}\right]+\left[\begin{array}{ccc}
+I & 0 & 0\\
+0 & B & 0\\
+0 & 0 & I
+\end{array}\right]\left[\begin{array}{c}
+m_{t}\\
+g_{t}\\
+h_{t}
+\end{array}\right]+v_{t}
+\left[\begin{array}{c}
+m_{t+1}\\
+g_{t+1}\\
+h_{t+1}
+\end{array}\right]	=\left[\begin{array}{c}
+\bar{\Phi}_{mm}\bar{\mu}_{m}+\bar{\Phi}_{mg}\bar{\mu}_{g}^{u}+\bar{\Phi}_{mh}\bar{\mu}_{h}\\
+\bar{\Phi}_{gm}\bar{\mu}_{m}+\bar{\Phi}_{gg}\bar{\mu}_{g}^{u}+\bar{\Phi}_{gh}\bar{\mu}_{h}\\
+\bar{\Phi}_{hh}\bar{\mu}_{h}
+\end{array}\right]+\left[\begin{array}{ccc}
+\Phi_{m} & \Phi_{mg} & \Phi_{mh}\\
+\Phi_{gm} & \Phi_{g} & \Phi_{gh}\\
+0 & 0 & \Phi_{h}
+\end{array}\right]\left[\begin{array}{c}
+m_{t}\\
+g_{t}\\
+h_{t}
+\end{array}\right]+\left[\begin{array}{ccc}
+\Sigma_{m}D_{m,t} & 0 & 0\\
+\Sigma_{gm}D_{m,t} & \Sigma_{g}D_{g,t} & 0\\
+\Sigma_{hm} & \Sigma_{hg} & \Sigma_{h}
+\end{array}\right]\nu_{t}
+v_{t}	\sim N\left(0,\left[\begin{array}{ccc}
+0 & 0 & 0\\
+0 & \Omega & 0\\
+0 & 0 & 0
+\end{array}\right]\right)
+
+(e) Use an HMC with ChEES sampler for a new parameter vector proposal given the square root Kalman filter provides the log likelihood
+
+(f) Accept or reject the new proposal using a traditional MH step
+
+2. Gibbs Block 2: Q-measure eigenvalues
+
+(a) Perform the same steps as the first Gibbs block, except now targeting the Q-measure eigenvalues \lambda^{\mathbb{Q}} conditioning on all other parameters, the draw of h_{t}, and marginalizing out g_{t}.
+
+(b) Given the restriction that \left|\lambda^{\mathbb{Q}}\right|<1 and the nature of the model, much posterior exploration will be near this boundary. HMC with ChEES will need to take special care in this step
+
+3. Gibbs block 3: g_{t} and the long run means
+
+(a) Conditioning on all other parameters and the draw of h_{t}, implement the simulation smoother of Durbin and Koopman (2002) on the state space model in “model_writeup.pdf” section 1.3 to obtain smoothed estimates of g_{t}, \bar{\mu}_{m}, \bar{\mu}_{g}^{u}, and \bar{\mu}_{g}^{\mathbb{Q},u}.
+
+4. Gibbs block 4: particle filter for latent volatilities h_{t}
+
+(a) Implement a particle Gibbs with Ancestor Sampling (PG-AS) routine to obtain forward-backward smoothed estimates of the latent volatilities h_{t} conditional on all other parameters and series.
+
+(b) Importance weights follow:w_{t}^{(j)}\propto w_{t-1}^{(j)}p\left(g_{t},m_{t}\mid m_{t-1},g_{t-1},h_{t}^{\left(j\right)},h_{t-1}^{\left(j\right)};\theta\right)
+
+5. Draw the remaining covariance matrices \Sigma_{m}, \Sigma_{gm}, \Sigma_{hm}, \Sigma_{hg}, and \Sigma_{h} recursively given the inverse-Wishart prior:
+
+(a) From the equationm_{t+1}=\mu_{m}+\Phi_{m}m_{t}+\Phi_{mg}g_{t}+\Phi_{mh}h_{t}+\Sigma_{m}D_{m,t}\epsilon_{m,t+1}
+
+i. Draw \Sigma_{m} given all other parameters and series
+
+ii. Extract \epsilon_{m,t+1} conditional on the draw of \Sigma_{m}
+
+(b) From the equationg_{t+1}=\mu_{g}+\Phi_{gm}m_{t}+\Phi_{g}g_{t}+\Phi_{gh}h_{t}+\Sigma_{gm}\epsilon_{m,t+1}+\Sigma_{g}D_{g,t}\epsilon_{g,t+1}
+
+i. Draw \Sigma_{gm} from the matrix-normal given \epsilon_{m,t+1} from the previous step and \Sigma_{g} from Gibbs block 1
+
+ii. Extract \epsilon_{g,t+1} conditional on the draw of \Sigma_{gm}
+
+(c) From the equationh_{t+1}=\mu_{h}+\Phi_{h}h_{t}+\Sigma_{hm}\epsilon_{m,t+1}+\Sigma_{hg}\epsilon_{g,t+1}+\Sigma_{h}\epsilon_{h,t+1}
+
+i. Draw \Sigma_{h} conditional on \epsilon_{m,t+1} and \epsilon_{g,t+1}
+
+ii. Draw \Sigma_{hm} and \Sigma_{hg} from the matrix-normal
+
+6. Note: one or all of these Gibbs steps should actively incorporate the restriction that 0	>\theta_{m}\bar{\mu}_{m}+\theta_{g}\bar{\mu}_{g}^{u}+\theta_{g}^{\mathbb{Q}}\bar{\mu}_{g}^{\mathbb{Q},u}+V
+\theta_{m}	=e_{d}^{\prime}\left(I-\Phi_{m}\right)^{-1}\bar{\Phi}_{mm}
+\theta_{g}	=e_{d}^{\prime}\left(I-\Phi_{m}\right)^{-1}\bar{\Phi}_{mg}
+\theta_{g}^{\mathbb{Q}}	=\left[e_{d}^{\prime}\left(I-\Phi_{m}\right)^{-1}\Phi_{mg}-e_{1}^{\prime}\right]M_{1}^{\mathbb{Q}}
+V	=\left[e_{d}^{\prime}\left(I-\Phi_{m}\right)^{-1}\bar{\Phi}_{mh}+e_{d}^{\prime}\Phi_{mh}\bar{\Phi}_{hh}\right]\bar{\mu}_{h}
+	+\left[e_{d}^{\prime}\left(I-\Phi_{m}\right)^{-1}\Phi_{mg}-e_{1}^{\prime}\right]M_{0}^{\mathbb{Q}}
+	+\frac{1}{2}\left[e_{d}^{\prime}\left(I-\Phi_{m}\right)^{-1}\Phi_{mg}-e_{1}^{\prime}\right]\left(I-\Phi_{g}^{\mathbb{Q}}\right)^{-1}\Sigma_{g}^{\mathbb{Q}}\left[\left[e_{d}^{\prime}\left(I-\Phi_{m}\right)^{-1}\Phi_{mg}-e_{1}^{\prime}\right]\left(I-\Phi_{g}^{\mathbb{Q}}\right)^{-1}\Sigma_{g}^{\mathbb{Q}}+e_{d}^{\prime}\Phi_{mh}\Sigma_{hg}\right]
+	+\frac{1}{2}e_{d}^{\prime}\Phi_{mh}\left[\Sigma_{hm}\Sigma_{hm}^{\prime}+\Sigma_{h}\Sigma_{h}^{\prime}\right]\Phi_{mh}^{\prime}e_{d}+\frac{1}{2}\left(e_{d}^{\prime}\Phi_{mh}\Sigma_{hg}\right)\left(e_{d}^{\prime}\Phi_{mh}\Sigma_{hg}\right)^{\prime}so that no posterior draw violates the convergence of equity pricing further down the MCMC iteration workflow.
+
+4 Equity Pricing
+
+1. Use the draws from the bond pricing section to estimate the price-dividend ratio described in “model_writeup.pdf”.
+
+2. Multiply this time series by the dividend data (not the log dividend growth data!) for each time period.
+
+3. Subtract this from the time series of S&P500 equity price
+
+4. Pass the result to the next step of the MCMC iteration as the “net-fundamental value”.
+
+5 Bubble Filtering
+
+1. In one large Gibbs block, use an pseudo-marginal HMC sampler over the bubble parameters \theta=\left\{ B_{0},\mu_{b},\phi_{b},\sigma_{h},\rho_{bm},\rho_{bg}\right\}  and auxiliary states u=\left[z_{b,1:T}^{\prime},\bar{\varepsilon}_{b,1:T}^{\prime}\right] as described in “model_writeup.pdf” section 3.
+
+2. Specifically, use an importance sampler which uses the following weights:\omega\left(y_{s},U_{s,i}\mid\theta\right)=p\left(y_{s}\mid\theta,U_{s,i}\right)\int_{-\infty}^{\infty}\frac{f\left(X_{1,s},\chi\mid\mathcal{F}_{s-1},g_{s},h_{s}\right)}{\phi\left(\mu_{X,s},\sigma_{X,s}^{2}\right)}\frac{1-\Phi\left(-\frac{\mu_{X,s}}{\sigma_{X,s}}\right)}{1-\Phi\left(-\frac{\mu_{s}^{*}\left(\chi\right)}{\sigma_{s}\left(\chi\right)}\right)}\frac{\sigma_{X,s}}{\sigma_{s}\left(\chi\right)}\phi\left(\chi\right)d\chi so that bubble growth rate is always weakly positive.
+
+6 Wrap up
+
+1. Save all parameter and series draws from the MCMC iteration in a sensible manner so they can be accessed later along with all draws up to present
+
+2. Update diagnostic information and iterate a progress bar
+
+3. End of MCMC iteration; loop back to Section 2 “Macrofundamental States” for the next iteration.
