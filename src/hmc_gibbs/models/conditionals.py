@@ -182,7 +182,9 @@ def logpost_block2_q_eigs(theta_block: Any, fixed: Dict[str, Any], data: Dict[st
     return jnp.where(jnp.isfinite(logpost), logpost, -jnp.inf)
 
 
-def draw_block2b_g_and_means(theta_block: Any, fixed: Dict[str, Any], data: Dict[str, Any]) -> Tuple[jnp.ndarray, jnp.ndarray]:
+def draw_block2b_g_and_means(
+    theta_block: Any, fixed: Dict[str, Any], data: Dict[str, Any]
+) -> Tuple[jnp.ndarray, equity_constraints.EquityConstraintSolution]:
     """Draw g and means using the Durbin–Koopman smoother and apply equity constraints."""
 
     work_logger.incr(kalman_evals=1)
@@ -193,8 +195,8 @@ def draw_block2b_g_and_means(theta_block: Any, fixed: Dict[str, Any], data: Dict
         m_t=data.get("m_t"),
         key=data.get("key"),
     )
-    constrained_means = equity_constraints.solve_linear_equity_constraint(theta_block, means)
-    return g_sample, constrained_means
+    solution = equity_constraints.solve_linear_equity_constraint(theta_block, means)
+    return g_sample, solution
 
 
 def pgibbs_h(theta_block: Any, fixed: Dict[str, Any], data: Dict[str, Any]) -> jnp.ndarray:
