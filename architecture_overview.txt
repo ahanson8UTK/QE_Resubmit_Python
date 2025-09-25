@@ -10,8 +10,8 @@ Execution Flow
 
 Data Layer
 ----------
-- **Dataset factories.** `hmc_gibbs.data.datasets` bundles macro, yield, and equity series, with helpers for synthetic generation and real-data loading driven by config paths.
-- **I/O utilities.** `hmc_gibbs.data.io` normalises CSV/Matlab inputs (randomly sampling candidate `m` matrices, scaling yields/dividends, aligning macro data).
+- **Market data loaders.** `src/data/market_data.py` parses Treasury yield and S&P 500 price/dividend CSVs, returning typed numpy arrays and efficient HDF5 slice helpers for factor draws.
+- **Random-m sampling.** `src/data/random_m_loader.py` validates configured file paths, loads observed inputs as pandas frames, and draws candidate `m` matrices from MAT pools using reproducible RNGs.
 
 Sampling Core
 -------------
