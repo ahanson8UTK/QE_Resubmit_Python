@@ -42,8 +42,16 @@ def _make_smoke_data(rng_key: jax.Array, T: int, d_state: int, d_y: int, d_m: in
         "a0": jnp.zeros(d_state, dtype=jnp.float64),
         "S0": jnp.eye(d_state, dtype=jnp.float64) * 0.3,
         "theta": jnp.zeros(d_state, dtype=jnp.float64),
+        "lambda_q": jnp.linspace(0.7, 0.4, d_state, dtype=jnp.float64),
     }
-    return {"y_t": y_t, "m_t": m_t, "fixed": {"h_t": h_t}, "params": params}
+    return {
+        "y_t": y_t,
+        "m_t": m_t,
+        "fixed": {"h_t": h_t},
+        "params": params,
+        "rho_max": 0.995,
+        "prior_scale_q": 0.3,
+    }
 
 
 def run_smoke(cfg: app_config.AppConfig, rng_key: jax.Array) -> None:
@@ -61,9 +69,23 @@ def run_smoke(cfg: app_config.AppConfig, rng_key: jax.Array) -> None:
     data = _make_smoke_data(rng_key, T=50, d_state=4, d_y=3, d_m=2)
     theta0_key, rng_key = jax.random.split(rng_key)
     theta0 = 0.1 * jax.random.normal(theta0_key, (chains, theta_dim), dtype=jnp.float64)
-    state = gibbs.SmokeState(theta_block3a=theta0)
+    lambda_dim = data["params"]["lambda_q"].shape[0]
+    lambda0_key, rng_key = jax.random.split(rng_key)
+    lambda0 = 0.05 * jax.random.normal(lambda0_key, (chains, lambda_dim), dtype=jnp.float64)
+    state = gibbs.SmokeState(theta_block3a=theta0, theta_block3b=lambda0)
 
-    cfg_dict = {"warmup": warmup_cfg}
+    cfg_dict = {
+        "warmup": warmup_cfg,
+        "block3b": {
+            "warmup": warmup_cfg,
+            "mass_regularization": 5.0,
+            "step_size_jitter": 0.15,
+            "boundary_threshold": 0.985,
+            "trajectory_shrink": 0.6,
+            "max_reject_streak": 3,
+            "reject_step_size_shrink": 0.75,
+        },
+    }
     rng_key, state, metrics = gibbs.run_smoke_sweeps(rng_key, state, cfg_dict, data, num_sweeps=5)
 
     run_id = save_results.build_run_id(cfg.run.run_id_prefix)
@@ -78,10 +100,20 @@ def run_smoke(cfg: app_config.AppConfig, rng_key: jax.Array) -> None:
         },
     )
 
-    tuned = state.diagnostics_3a or {}
-    epsilon = tuned.get("final_step_size", float("nan"))
-    traj = tuned.get("final_trajectory_length", float("nan"))
-    print(f"[smoke] tuned step size: {float(epsilon):.4f}; trajectory length: {float(traj):.4f}")
+    tuned3a = state.diagnostics_3a or {}
+    epsilon3a = tuned3a.get("final_step_size", float("nan"))
+    traj3a = tuned3a.get("final_trajectory_length", float("nan"))
+    tuned3b = state.diagnostics_3b or {}
+    epsilon3b = tuned3b.get("final_step_size", float("nan"))
+    traj3b = tuned3b.get("final_trajectory_length", float("nan"))
+    print(
+        "[smoke] block3a step size: "
+        f"{float(epsilon3a):.4f}; trajectory length: {float(traj3a):.4f}"
+    )
+    print(
+        "[smoke] block3b step size: "
+        f"{float(epsilon3b):.4f}; trajectory length: {float(traj3b):.4f}"
+    )
 
 
 def main() -> None:

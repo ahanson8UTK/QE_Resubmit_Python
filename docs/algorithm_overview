@@ -98,9 +98,13 @@ v_{t}	\sim N\left(0,\left[\begin{array}{ccc}
 
 2. Gibbs Block 2: Q-measure eigenvalues
 
-(a) Perform the same steps as the first Gibbs block, except now targeting the Q-measure eigenvalues \lambda^{\mathbb{Q}} conditioning on all other parameters, the draw of h_{t}, and marginalizing out g_{t}.
+(a) Mirror the Block 3a workflow (the HMC-ChEES routine used for the P-measure eigenvalues), but freeze every parameter other than the Q-measure eigenvalues \lambda^{\mathbb{Q}} when forming the conditional likelihood with the square-root Kalman filter.
 
-(b) Given the restriction that \left|\lambda^{\mathbb{Q}}\right|<1 and the nature of the model, much posterior exploration will be near this boundary. HMC with ChEES will need to take special care in this step
+(b) Sample proposals in an unrestricted space \tilde{\lambda}^{\mathbb{Q}}\in\mathbb{R}^{d} and map them to the restricted eigenvalues using a tanh transformation for the leading element and a stick-breaking map for the remaining elements so that \left|\lambda_{i}^{\mathbb{Q}}\right|<1 is always satisfied.
+
+(c) Run HMC-ChEES on \tilde{\lambda}^{\mathbb{Q}}, pushing gradients through the restriction map before evaluating the Kalman-filter log likelihood and the corresponding acceptance ratio.
+
+(d) Anticipate the first eigenvalue spending most of its posterior mass near the stability boundary and add robustness features to keep the sampler mixing: (i) employ an adaptive diagonal mass matrix with heavy regularization; (ii) clip gradients and shrink the ChEES trajectory length when the transformed eigenvalues are \geq0.98 in magnitude; (iii) jitter the integrator step size across leapfrog trajectories and fall back to a partially refreshed momentum if repeated rejections occur.
 
 3. Gibbs block 3: g_{t} and the long run means
 
